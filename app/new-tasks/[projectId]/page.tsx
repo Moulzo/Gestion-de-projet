@@ -7,12 +7,32 @@ import { Project } from '@/type';
 import { User } from '@prisma/client';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react'
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
+
+    const modules = {
+        toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'font': [] }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            [{ 'color': [] }, { 'background': [] }],
+            ['blockquote', 'code-block'],
+            ['link', 'image'],
+            ['clean']
+        ]
+    };
+
 
     const [projectId, setProjectId] = useState("")
     const [project, setProject] = useState<Project | null>(null);
     const [usersProject, setUsersProject] = useState<User[]>([]);
+    const [selectedUser, setSelectedUser] = React.useState<User | null>(null)
+    const [dueDate, setDueDate] = useState<Date | null>(null)
+    const [name, setName] = useState("")
+    const [description, setDescription] = useState("")
 
     const fetchInfos = async (projectId: string) => {
         try {
@@ -34,6 +54,10 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
         getId()
     }, [params])
 
+    const handleUserSelect = (user: User) => {
+        setSelectedUser(user)
+    }
+
     return (
         <Wrapper>
             <div >
@@ -49,11 +73,41 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                 </div>
                 <div className='flex flex-col md:flex-row md:justify-between'>
                     <div className='md:w-1/4'>
-                        <AssignTask users={usersProject} projectId={projectId} />
+                        <AssignTask users={usersProject} projectId={projectId} onAssignTask={handleUserSelect} />
+                        <div className='flex justify-between items-center mt-4'>
+                            <span className='badge w-20 mr-2'>
+                                À livré
+                            </span>
+                            <input
+                                placeholder="Date d'échéance"
+                                className='input input-bordered border border-base-300'
+                                type="date"
+                                onChange={(e) => setDueDate(new Date(e.target.value))} />
+                        </div>
                     </div>
-                    <div className='md:w-3/4'>
+                    <div className='md:w-3/4 mt-4 md:mt-0 md:ml-4'>
+                        <div className='flex flex-col justify-between w-full'>
+                            <input
+                                placeholder='Nom de la tâche'
+                                className='w-full input input bordered border border-base-300 font-bold mb-4'
+                                type='text'
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
 
+                            <ReactQuill
+                                placeholder='Décrivez la tâche'
+                                value={description}
+                                modules={modules}
+                                onChange={setDescription}
+                            />
 
+                        </div>
+                        <div className='flex justify-end'>
+                            <button className='btn mt-4 btn-md btn-primary'>
+                                Créer la tâche
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
