@@ -172,3 +172,45 @@ export async function addUserToProject(email: string, inviteCode: string) {
     }
 
 }
+
+export async function getProjectsAssociatedWithUser(email: string) {
+    try {
+        const projects = await prisma.project.findMany({
+            where: {
+                users: {
+                    some: {
+                        user: {
+                            email
+                        }
+                    }
+                }
+            },
+            include: {
+                tasks: true,
+                users: {
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                }
+            }
+        })
+
+        const formattedProjects = projects.map((project) => ({
+            ...project,
+            users: project.users.map((userEntry: any) => userEntry.user)
+        }))
+
+        return formattedProjects
+
+    } catch (error) {
+        console.error(error)
+        throw new Error
+    }
+
+}
