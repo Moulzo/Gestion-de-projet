@@ -1,14 +1,17 @@
 "use client"
 
-import { getProjectInfo, getProjectUsers } from '@/app/actions';
+import { createTask, getProjectInfo, getProjectUsers } from '@/app/actions';
 import AssignTask from '@/app/components/AssignTask';
 import Wrapper from '@/app/components/Wrapper'
 import { Project } from '@/type';
+import { useUser } from '@clerk/nextjs';
 import { User } from '@prisma/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react'
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { toast } from 'react-toastify';
 
 const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
@@ -26,6 +29,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
     };
 
 
+    const { user } = useUser()
+    const email = user?.primaryEmailAddress?.emailAddress as string
     const [projectId, setProjectId] = useState("")
     const [project, setProject] = useState<Project | null>(null);
     const [usersProject, setUsersProject] = useState<User[]>([]);
@@ -33,6 +38,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
     const [dueDate, setDueDate] = useState<Date | null>(null)
     const [name, setName] = useState("")
     const [description, setDescription] = useState("")
+    const router = useRouter()
 
     const fetchInfos = async (projectId: string) => {
         try {
@@ -56,6 +62,19 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
     const handleUserSelect = (user: User) => {
         setSelectedUser(user)
+    }
+
+    const handleSubmit = async () => {
+        if (!name || !description || !selectedUser || !projectId || !dueDate) {
+            toast.error("Veuillez remplir tous les champs obligatoires")
+            return
+        }
+        try {
+            await createTask(name, description, dueDate, projectId, email, selectedUser.email)
+            router.push(`/project/${projectId}`)
+        } catch (error) {
+            toast.error("Une erreur est survenue lors de la création de la tâche")
+        }
     }
 
     return (
@@ -104,7 +123,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
                         </div>
                         <div className='flex justify-end'>
-                            <button className='btn mt-4 btn-md btn-primary'>
+                            <button className='btn mt-4 btn-md btn-primary' onClick={handleSubmit}>
                                 Créer la tâche
                             </button>
                         </div>
