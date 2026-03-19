@@ -2,3 +2,25 @@
 @plugin "daisyui" {
   themes: lemonade --default, synthwave --prefersdark;
 }
+
+.ql-container {
+    background: bg-primary;
+    border-radius: 0 0 4px 4px;
+}
+
+.ql-toolbar {
+    background: #E5E6E6;
+    border: 1px solid red;
+    border-radius: 4px 4px 0 0;
+    border-top-left-radius: 0.5em;
+    border-top-right-radius: 0.5em;
+    border-bottom: none;
+}
+
+.ql-editor {
+    min-height: 200px;
+}
+
+.ql-editor::selection {
+    color: #000;
+}
