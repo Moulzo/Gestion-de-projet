@@ -214,3 +214,42 @@ export async function getProjectsAssociatedWithUser(email: string) {
     }
 
 }
+
+export async function getProjectInfo(idProject: string, details: boolean) {
+    try {
+        const project = await prisma.project.findUnique({
+            where: {
+                id: idProject
+            },
+            include: details ? {
+                tasks: {
+                    include: {
+                        user: true,
+                        createdBy: true
+                    }
+                },
+                users: {
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                },
+                createdBy: true
+            } : undefined
+
+        })
+        if (!project) {
+            throw new Error("Projet non trouvé")
+        }
+
+        return project
+    } catch (error) {
+        console.error(error)
+        throw new Error
+    }
+}
