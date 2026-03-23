@@ -349,3 +349,26 @@ export async function deleteTaskById(taskId: string) {
         throw new Error
     }
 }
+
+export const getTaskDetails = async (taskId: string) => {
+    try {
+        const task = await prisma.task.findUnique({
+            where : {id: taskId},
+            include : {
+                project: true,
+                user: true,
+                createdBy: true
+            }
+        })
+
+        if(!task){
+            throw new Error('Tâche non trouvée')
+        }
+        
+        return task 
+
+    } catch (error) {
+        console.error(error)
+        throw new Error
+    }
+}
