@@ -51,7 +51,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
             }
             setTaskCounts(counts)
         }
-    }, [params])
+    }, [project,email])
 
     const filteredTasks = project?.tasks?.filter(task => {
         const statusMatch = !statusFilter || task.status == statusFilter
@@ -94,7 +94,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                             <div className="space-x-2 mt-2">
                                 <button
                                     onClick={() => { setStatusFilter(''); setAssignedFilter(false) }}
-                                    className={`btn btn-sm ${!statusFilter && !assignedFilter ? 'btn-primary' : ''}`}>
+                                    className={`btn btn-sm ${!statusFilter ? 'btn-primary' : ''}`}>
                                     <SlidersHorizontal className="w-4" /> Tous ({project?.tasks?.length || 0})
                                 </button>
 
