@@ -35,6 +35,8 @@ const page = () => {
         try {
             if (inviteCode != "") {
                 await addUserToProject(email, inviteCode)
+                fetchProjects(email)
+                setInviteCode("")
                 toast.success("Vous avez rejoint le projet avec succès")
             } else {
                 toast.error("Veuillez entrer un code d'invitation")
