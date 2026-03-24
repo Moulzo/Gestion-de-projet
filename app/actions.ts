@@ -64,6 +64,14 @@ export async function createProject(name: string, description: string, email: st
             }
         })
 
+        await prisma.projectUser.create({
+            data: {
+                projectId: newProject.id,
+                userId: user.id,
+                role: "OWNER",
+            },
+        });
+
         return newProject;
 
     } catch (error) {
@@ -164,7 +172,8 @@ export async function addUserToProject(email: string, inviteCode: string) {
         await prisma.projectUser.create({
             data: {
                 projectId: project.id,
-                userId: user.id
+                userId: user.id,
+                role: "MEMBER",
             }
         })
 
