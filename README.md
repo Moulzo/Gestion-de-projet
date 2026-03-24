@@ -249,4 +249,4 @@ Projet réalisé par **Moulaye Cheikh Oumar KOUNTA**.
 
 ## Remarque
 
-Cette application est actuellement à un stade de **base fonctionnelle avancée**. Elle n’est plus seulement au niveau “mise en place du squelette”, mais elle reste dans une phase de consolidation avant d’évoluer vers une version plus robuste et plus différenciante. citeturn455553view0turn455553view3
+Cette application est actuellement à un stade de **base fonctionnelle avancée**. Elle n’est plus seulement au niveau “mise en place du squelette”, mais elle reste dans une phase de consolidation avant d’évoluer vers une version plus robuste et plus différenciante.
