@@ -2,6 +2,15 @@
 
 import prisma from "@/lib/prisma";
 import { randomBytes } from "crypto";
+import {
+    ActionError,
+    assertProjectMember,
+    assertProjectOwner,
+    assertTaskAccess,
+    getCurrentDbUser,
+} from "@/lib/permissions";
+
+const ALLOWED_TASK_STATUSES = ["To Do", "In Progress", "Done"] as const;
 
 export async function checkAndAddUser(email: string, name: string) {
     if (!email) return
@@ -107,18 +116,13 @@ export async function getProjectsCreatedByUSer(email: string) {
 }
 
 export async function deleteProjectById(projectId: string) {
-    try {
+    await assertProjectOwner(projectId);
 
-        await prisma.project.delete({
-            where: {
-                id: projectId
-            }
-        })
-        console.log(`Projet avec l'ID ${projectId} supprimé avec succès.`)
-    } catch (error) {
-        console.error(error)
-        throw new Error
-    }
+    await prisma.project.delete({
+        where: { id: projectId },
+    });
+
+    return { success: true, message: "Projet supprimé avec succès." };
 }
 
 export async function addUserToProject(email: string, inviteCode: string) {
@@ -216,17 +220,17 @@ export async function getProjectsAssociatedWithUser(email: string) {
 }
 
 export async function getProjectInfo(idProject: string, details: boolean) {
-    try {
-        const project = await prisma.project.findUnique({
-            where: {
-                id: idProject
-            },
-            include: details ? {
+    await assertProjectMember(idProject);
+
+    const project = await prisma.project.findUnique({
+        where: { id: idProject },
+        include: details
+            ? {
                 tasks: {
                     include: {
                         user: true,
-                        createdBy: true
-                    }
+                        createdBy: true,
+                    },
                 },
                 users: {
                     select: {
@@ -234,49 +238,40 @@ export async function getProjectInfo(idProject: string, details: boolean) {
                             select: {
                                 id: true,
                                 name: true,
-                                email: true
-                            }
-                        }
-                    }
+                                email: true,
+                            },
+                        },
+                    },
                 },
-                createdBy: true
-            } : undefined
+                createdBy: true,
+            }
+            : {
+                createdBy: true,
+            },
+    });
 
-        })
-        if (!project) {
-            throw new Error("Projet non trouvé")
-        }
-
-        return project
-    } catch (error) {
-        console.error(error)
-        throw new Error
+    if (!project) {
+        throw new ActionError("Projet non trouvé.", 404);
     }
+
+    return project;
 }
 
 export async function getProjectUsers(idProject: string) {
-    try {
-        const projectWithUsers = await prisma.project.findUnique({
-            where: {
-                id: idProject
+    await assertProjectMember(idProject);
+
+    const projectWithUsers = await prisma.project.findUnique({
+        where: { id: idProject },
+        include: {
+            users: {
+                include: {
+                    user: true,
+                },
             },
-            include: {
-                users: {
-                    include: {
-                        user: true
-                    }
-                }
-            }
-        })
+        },
+    });
 
-        const users = projectWithUsers?.users.map((projectUser => projectUser.user)) || []
-
-        return users
-
-    } catch (error) {
-        console.error(error)
-        throw new Error
-    }
+    return projectWithUsers?.users.map((projectUser) => projectUser.user) || [];
 }
 
 export async function createTask(
@@ -284,130 +279,120 @@ export async function createTask(
     description: string,
     dueDate: Date | null,
     projectId: string,
-    createdByEmail: string,
     assignToEmail: string | null
 ) {
-    try {
+    const { user } = await assertProjectMember(projectId);
 
-        const createdBy = await prisma.user.findUnique({
+    let assignedUserId = user.id;
+
+    if (assignToEmail) {
+        const assignedUser = await prisma.user.findUnique({
+            where: { email: assignToEmail },
+        });
+
+        if (!assignedUser) {
+            throw new ActionError("Utilisateur assigné introuvable.", 404);
+        }
+
+        const assignedUserHasAccess = await prisma.project.findFirst({
             where: {
-                email: createdByEmail
-            }
-        })
+                id: projectId,
+                OR: [
+                    { createdById: assignedUser.id },
+                    { users: { some: { userId: assignedUser.id } } },
+                ],
+            },
+            select: { id: true },
+        });
 
-        if (!createdBy) {
-            throw new Error(`Utilisateur avec l'email ${createdByEmail} introuvable`)
+        if (!assignedUserHasAccess) {
+            throw new ActionError("L'utilisateur assigné n'appartient pas à ce projet.", 400);
         }
 
-        let assignedUserId = createdBy.id
-
-        if (assignToEmail) {
-            const assignedUser = await prisma.user.findUnique({
-                where: {
-                    email: assignToEmail
-                }
-            })
-
-            if (!assignedUser) {
-                throw new Error(`Utilisateur avec l'email ${assignToEmail} introuvable`)
-            }
-            assignedUserId = assignedUser.id
-
-        }
-
-        const newTask = await prisma.task.create({
-            data: {
-                name: name,
-                description: description,
-                dueDate: dueDate,
-                projectId: projectId,
-                createdById: createdBy.id,
-                userId: assignedUserId
-
-            }
-        })
-
-        console.log(`Tâche créée avec succès :`, newTask)
-        return newTask;
-
-    } catch (error) {
-        console.error(error)
-        throw new Error
+        assignedUserId = assignedUser.id;
     }
 
+    const newTask = await prisma.task.create({
+        data: {
+            name,
+            description,
+            dueDate,
+            projectId,
+            createdById: user.id,
+            userId: assignedUserId,
+        },
+    });
+
+    return newTask;
 }
 
 export async function deleteTaskById(taskId: string) {
-    try {
-        await prisma.task.delete({
-            where: {
-                id: taskId
-            }
-        })
-    } catch (error) {
-        console.error(error)
-        throw new Error
+    const { user, task } = await assertTaskAccess(taskId);
+
+    const canDelete =
+        task.createdById === user.id || task.project.createdById === user.id;
+
+    if (!canDelete) {
+        throw new ActionError("Vous n'êtes pas autorisé à supprimer cette tâche.", 403);
     }
+
+    await prisma.task.delete({
+        where: { id: taskId },
+    });
+
+    return { success: true, message: "Tâche supprimée avec succès." };
 }
 
 export const getTaskDetails = async (taskId: string) => {
-    try {
-        const task = await prisma.task.findUnique({
-            where: { id: taskId },
-            include: {
-                project: true,
-                user: true,
-                createdBy: true
-            }
-        })
+    await assertTaskAccess(taskId);
 
-        if (!task) {
-            throw new Error('Tâche non trouvée')
-        }
+    const task = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: {
+            project: true,
+            user: true,
+            createdBy: true,
+        },
+    });
 
-        return task
-
-    } catch (error) {
-        console.error(error)
-        throw new Error
+    if (!task) {
+        throw new ActionError("Tâche non trouvée.", 404);
     }
-}
 
-export const updateTaskStatus = async (taskId: string, newStatus: string, solutionDescription?: string) => {
-    try {
-        const existingTask = await prisma.task.findUnique({
-            where: {
-                id: taskId
-            }
-        })
+    return task;
+};
 
-        if (!existingTask) {
-            throw new Error('Tâche non trouvée')
-        }
+export const updateTaskStatus = async (
+    taskId: string,
+    newStatus: string,
+    solutionDescription?: string
+) => {
+    const { user, task } = await assertTaskAccess(taskId);
 
-        if (newStatus === "Done" && solutionDescription) {
-            await prisma.task.update({
-                where: {
-                    id: taskId
-                },
-                data: {
-                    status: newStatus,
-                    solutionDescription
-                }
-            })
-        } else {
-            await prisma.task.update({
-                where: {
-                    id: taskId
-                },
-                data: {
-                    status: newStatus
-                }
-            })
-        }
+    const canUpdate =
+        task.userId === user.id ||
+        task.createdById === user.id ||
+        task.project.createdById === user.id;
 
-    } catch (error) {
-        console.error(error)
-        throw new Error
+    if (!canUpdate) {
+        throw new ActionError("Vous n'êtes pas autorisé à modifier cette tâche.", 403);
     }
-}
+
+    if (!ALLOWED_TASK_STATUSES.includes(newStatus as (typeof ALLOWED_TASK_STATUSES)[number])) {
+        throw new ActionError("Statut de tâche invalide.", 400);
+    }
+
+    if (newStatus === "Done" && !solutionDescription?.trim()) {
+        throw new ActionError("Une description de solution est requise pour terminer la tâche.", 400);
+    }
+
+    await prisma.task.update({
+        where: { id: taskId },
+        data: {
+            status: newStatus,
+            solutionDescription: newStatus === "Done" ? solutionDescription : null,
+        },
+    });
+
+    return { success: true, message: "Statut mis à jour avec succès." };
+};
