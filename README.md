@@ -1,127 +1,92 @@
-# App Gestion de Projets
+# Gestion de projet
 
-Application web de gestion de projets et de tâches destinée à suivre l’avancement d’un travail d’équipe, répartir les tâches, gérer les membres d’un projet et visualiser l’état global de l’activité.
+Application web de gestion de projets et de tâches destinée au suivi de l’avancement des projets d’une équipe de développement.
 
-Cette version du README reflète **l’état actuel réel du dépôt**, et non plus seulement la base initiale du projet.
+Le projet repose sur une base fonctionnelle déjà exploitable : création de projets, ajout de collaborateurs via code d’invitation, consultation des projets personnels et collaboratifs, création de tâches, consultation du détail d’une tâche et mise à jour de son statut. La pile actuelle s’appuie sur Next.js App Router, TypeScript, Clerk, Prisma et SQLite. 
 
----
+## Objectif
 
-## 1. État actuel du projet
-Le projet est déjà fonctionnel sur les points suivants :
-- authentification avec Clerk ;
-- protection des routes privées ;
-- création automatique d’un utilisateur applicatif local à partir du compte Clerk ;
-- création de projet avec code d’invitation unique ;
-- affichage des projets créés par l’utilisateur ;
-- page de collaborations permettant de rejoindre un projet via code d’invitation ;
-- affichage des projets auxquels l’utilisateur participe ;
-- consultation du détail d’un projet ;
-- création de tâche dans un projet ;
-- assignation d’une tâche à un membre du projet ;
-- suppression d’une tâche ;
+L’objectif de l’application est de proposer un outil simple à prendre en main pour suivre l’évolution des projets de l’équipe, répartir les tâches et visualiser l’état d’avancement sans alourdir le flux de travail. Cette orientation correspond aussi au besoin initial formulé pour le stage : une application facile d’utilisation, mais pas trop simpliste. 
+
+## État actuel du projet
+
+À ce stade, l’application permet déjà de couvrir un premier workflow métier :
+
+- authentification via Clerk ;
+- synchronisation de l’utilisateur en base locale ;
+- création d’un projet avec génération d’un code d’invitation ;
+- consultation des projets créés par l’utilisateur ;
+- jointure à un projet via un code d’invitation ;
+- consultation des projets collaboratifs ;
+- affichage du détail d’un projet avec ses tâches et ses membres ;
+- création de tâches ;
 - consultation du détail d’une tâche ;
 - mise à jour du statut d’une tâche ;
-- ajout d’une description de solution quand une tâche est marquée comme terminée.
+- suppression de projets et de tâches. 
 
-Le projet constitue donc une **V1 fonctionnelle** de gestion de projets/tâches, construite comme base de travail avant enrichissement métier.
+Le README initial du dépôt décrivait surtout une base encore en construction, avec une navigation “en cours” et plusieurs pages métier encore annoncées comme à créer. Or le projet actuel expose déjà un socle métier plus avancé que cette description.
 
----
+## Stack technique
 
-## 2. Écart avec l’ancien README
-L’ancien README décrivait surtout une base encore en construction, avec une navigation “en cours de construction” et des fonctionnalités “visées”.
-
-Ce n’est plus complètement à jour.
-
-### Ce qui était incomplet dans l’ancien README
-- il ne reflétait pas l’existence des pages métier déjà présentes ;
-- il ne détaillait pas le flux réel de création et de collaboration ;
-- il présentait encore la page d’accueil comme une simple page temporaire, alors qu’elle sert déjà de dashboard “Mes projets” ;
-- il ne décrivait pas les server actions déjà implémentées ;
-- il ne montrait pas clairement le schéma métier actuel basé sur `User`, `Project`, `Task` et `ProjectUser`.
-
-Ce README corrige ces écarts.
-
----
-
-## 3. Stack technique
-- **Framework** : Next.js (App Router)
+- **Framework** : Next.js 16 (App Router) 
 - **Langage** : TypeScript
-- **UI** : Tailwind CSS v4 + DaisyUI
-- **Authentification** : Clerk (`@clerk/nextjs`)
-- **ORM** : Prisma
-- **Base de données** : SQLite
-- **Icônes** : Lucide React
-- **Notifications UI** : React Toastify
-- **Éditeur riche installé** : `react-quill-new`
+- **UI** : Tailwind CSS v4 + DaisyUI 
+- **Authentification** : Clerk (`@clerk/nextjs`) 
+- **ORM** : Prisma 
+- **Base de données** : SQLite en développement via `DATABASE_URL`
+- **Notifications UI** : React Toastify 
+- **Icônes** : Lucide React 
+- **Éditeur riche présent dans les dépendances** : `react-quill-new` 
 
----
+## Fonctionnalités actuelles
 
-## 4. Architecture générale
-### Dossiers principaux
-```text
-app/
-├── components/
-│   ├── AssignTask.tsx
-│   ├── AuthWrapper.tsx
-│   ├── EmptyState.tsx
-│   ├── Navbar.tsx
-│   ├── ProjectComponent.tsx
-│   ├── TaskComponent.tsx
-│   ├── UserInfo.tsx
-│   └── Wrapper.tsx
-├── general-projects/
-│   └── page.tsx
-├── new-tasks/
-│   └── [projectId]/
-│       └── page.tsx
-├── project/
-│   └── [projectId]/
-│       └── page.tsx
-├── sign-in/
-│   └── [[...sign-in]]/
-│       └── page.tsx
-├── sign-up/
-│   └── [[...sign-up]]/
-│       └── page.tsx
-├── task-details/
-│   └── [taskId]/
-│       └── page.tsx
-├── actions.ts
-├── globals.css
-├── layout.tsx
-└── page.tsx
+### Authentification et accès
+- pages de connexion et d’inscription gérées avec Clerk ;
+- protection des routes privées prévue via `proxy.ts` ;
+- création ou vérification de l’utilisateur en base grâce à `checkAndAddUser(email, name)`. 
 
-lib/
-└── prisma.ts
+### Gestion des projets
+- création d’un projet ;
+- génération automatique d’un code d’invitation unique ;
+- récupération des projets créés par l’utilisateur ;
+- récupération des projets auxquels l’utilisateur participe ;
+- suppression d’un projet. 
 
-prisma/
-├── migrations/
-├── dev.db
-└── schema.prisma
+### Collaboration
+- ajout d’un utilisateur à un projet via un code d’invitation ;
+- prévention des doublons d’association entre utilisateur et projet via la contrainte `@@unique([userId, projectId])` dans `ProjectUser` ;
+- récupération de la liste des membres d’un projet. 
 
-proxy.ts
-type.ts
-```
+### Gestion des tâches
+- création d’une tâche dans un projet ;
+- affectation facultative à un utilisateur, ou par défaut au créateur ;
+- récupération du détail complet d’une tâche ;
+- mise à jour du statut d’une tâche ;
+- enregistrement d’une description de solution si la tâche est marquée comme terminée ;
+- suppression d’une tâche.
 
----
+## Modèle de données actuel
 
-## 5. Modèle de données actuel
+Le schéma Prisma actuel repose sur quatre entités principales :
+
 ### `User`
-Représente un utilisateur applicatif.
+Représente un utilisateur de l’application.
 
-Champs et relations principaux :
+Champs notables :
 - `id`
 - `name`
 - `email`
-- tâches assignées
-- tâches créées
-- projets créés
-- participations via `ProjectUser`
+
+Relations :
+- tâches assignées ;
+- tâches créées ;
+- projets créés ;
+- appartenance aux projets via `ProjectUser`. 
 
 ### `Project`
-Représente un projet.
+Représente un projet suivi dans l’application.
 
-Champs et relations principaux :
+Champs notables :
 - `id`
 - `name`
 - `description`
@@ -129,146 +94,111 @@ Champs et relations principaux :
 - `updatedAt`
 - `inviteCode`
 - `createdById`
-- liste des tâches
-- liste des membres via `ProjectUser`
 
+Relations :
+- créateur ;
+- tâches ;
+- utilisateurs associés. 
 ### `Task`
-Représente une tâche de projet.
+Représente une tâche liée à un projet.
 
-Champs et relations principaux :
+Champs notables :
 - `id`
 - `name`
 - `description`
 - `status`
 - `dueDate`
-- `projectId`
-- `userId` (utilisateur assigné)
-- `createdById`
 - `solutionDescription`
+- `projectId`
+- `userId`
+- `createdById` 
 
 ### `ProjectUser`
-Table de jointure entre utilisateur et projet.
+Table de jointure entre utilisateurs et projets.
 
-Elle permet de gérer les membres associés à un projet et empêche les doublons via une contrainte unique sur le couple utilisateur/projet.
+Rôle actuel :
+- gérer l’association collaborateur/projet ;
+- empêcher les doublons via une contrainte d’unicité. 
 
----
+## Organisation du projet
 
-## 6. Fonctionnalités actuellement disponibles
-### Authentification
-- connexion et inscription via Clerk ;
-- routes publiques : `/sign-in`, `/sign-up` ;
-- routes privées protégées via `proxy.ts`.
+Structure logique actuelle décrite par le dépôt :
 
-### Gestion des utilisateurs
-- synchronisation de l’utilisateur Clerk avec la base locale via `checkAndAddUser(email, name)` ;
-- appel effectué au montage de la navbar quand l’utilisateur est connu.
+```text
+app/
+  actions.ts
+  components/
+  general-projects/
+  new-tasks/[projectId]/
+  project/[projectId]/
+  sign-in/[[...sign-in]]/
+  sign-up/[[...sign-up]]/
+  task-details/[taskId]/
+lib/
+  prisma.ts
+prisma/
+  schema.prisma
+public/
+proxy.ts
+```
 
-### Gestion des projets
-- création d’un projet avec nom, description et code d’invitation unique ;
-- affichage des projets créés par l’utilisateur connecté ;
-- suppression d’un projet ;
-- affichage des informations détaillées d’un projet.
+Le cœur de la logique métier est aujourd’hui centralisé dans `app/actions.ts`, ce qui est pratique pour une première version mais constitue aussi un axe de refactorisation évident à moyen terme.
 
-### Collaboration
-- jointure à un projet via code d’invitation ;
-- affichage des projets auxquels l’utilisateur est associé ;
-- affichage des membres d’un projet.
+## Installation
 
-### Gestion des tâches
-- création d’une tâche dans un projet ;
-- affectation de la tâche à un membre ;
-- suppression d’une tâche ;
-- affichage du détail d’une tâche ;
-- changement de statut ;
-- possibilité d’ajouter une solution lors du passage à l’état “Done”.
+### 1. Cloner le dépôt
 
----
+```bash
+git clone https://github.com/Moulzo/Gestion-de-projet.git
+cd Gestion-de-projet
+```
 
-## 7. Flux applicatif principal
-### 1. Connexion
-L’utilisateur s’authentifie via Clerk.
+### 2. Installer les dépendances
 
-### 2. Synchronisation utilisateur
-Au chargement de l’interface, la navbar appelle `checkAndAddUser(...)` pour s’assurer que l’utilisateur existe dans la base SQLite.
-
-### 3. Tableau de bord personnel
-La page `/` affiche les projets créés par l’utilisateur.
-
-### 4. Création d’un projet
-Depuis la page d’accueil, l’utilisateur peut créer un projet avec nom et description. Un code d’invitation est généré automatiquement.
-
-### 5. Collaboration
-Depuis `/general-projects`, l’utilisateur peut rejoindre un projet avec un code d’invitation puis consulter ses projets collaboratifs.
-
-### 6. Gestion détaillée d’un projet
-Depuis `/project/[projectId]`, l’utilisateur peut :
-- consulter les informations du projet ;
-- voir les tâches ;
-- filtrer les tâches ;
-- supprimer une tâche ;
-- accéder au formulaire de création de tâche.
-
-### 7. Gestion détaillée d’une tâche
-Depuis `/task-details/[taskId]`, l’utilisateur consulte les informations d’une tâche et met à jour son statut.
-
----
-
-## 8. Server actions actuellement présentes
-Le fichier `app/actions.ts` centralise actuellement la logique serveur.
-
-Fonctions principales :
-- `checkAndAddUser`
-- `createProject`
-- `getProjectsCreatedByUSer`
-- `deleteProjectById`
-- `addUserToProject`
-- `getProjectsAssociatedWithUser`
-- `getProjectInfo`
-- `getProjectUsers`
-- `createTask`
-- `deleteTaskById`
-- `getTaskDetails`
-- `updateTaskStatus`
-
----
-
-## 9. Installation et lancement
-### Prérequis
-- Node.js
-- npm
-- compte Clerk
-
-### Installation
 ```bash
 npm install
 ```
 
-### Variables d’environnement
-Créer un fichier `.env` avec au minimum :
+### 3. Configurer les variables d’environnement
+
+Créer un fichier `.env` à la racine du projet avec une configuration de ce type :
+
 ```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 DATABASE_URL="file:./dev.db"
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="..."
-CLERK_SECRET_KEY="..."
 ```
 
-Selon la configuration Clerk utilisée, d’autres variables peuvent être nécessaires.
+Le projet actuel dépend bien de Clerk pour l’authentification et de Prisma avec SQLite pour la persistance locale. 
 
-### Prisma
+### 4. Appliquer les migrations Prisma
+
 ```bash
-npx prisma generate
 npx prisma migrate dev
 ```
 
-### Lancement du projet
+### 5. Générer le client Prisma
+
+```bash
+npx prisma generate
+```
+
+### 6. Lancer l’application
+
 ```bash
 npm run dev
 ```
 
-Application disponible localement sur l’URL de développement Next.js.
+L’application sera ensuite disponible sur :
 
----
+```text
+http://localhost:3000
+```
 
-## 10. Scripts disponibles
+## Scripts disponibles
+
 ```bash
 npm run dev
 npm run build
@@ -276,45 +206,47 @@ npm run start
 npm run lint
 ```
 
----
+Ces scripts sont bien ceux actuellement déclarés dans `package.json`.
 
-## 11. Points d’attention techniques
-Le projet est fonctionnel, mais plusieurs améliorations sont recommandées avant montée en version :
-- ajouter de vraies vérifications d’autorisation métier sur les actions serveur ;
-- remplacer certains `throw new Error` trop génériques ;
-- découper `app/actions.ts` ;
-- mieux typer les données ;
-- remplacer les manipulations directes des modales par une gestion React plus propre ;
-- enrichir la gestion des statuts et des priorités.
+## Workflow actuel de l’application
 
----
+1. L’utilisateur se connecte ou crée un compte via Clerk.
+2. Son profil est synchronisé dans la base locale si nécessaire.
+3. Il peut créer un projet.
+4. Un code d’invitation unique est généré pour ce projet.
+5. Il peut consulter ses projets personnels.
+6. Il peut rejoindre un autre projet via le code d’invitation.
+7. Il peut consulter les projets auxquels il participe.
+8. Dans un projet, il peut visualiser les tâches et les membres.
+9. Il peut créer une tâche et l’affecter à un utilisateur.
+10. Il peut ouvrir une tâche et faire évoluer son statut jusqu’à `Done`, avec une solution associée si besoin.
 
-## 12. Positionnement du projet
-Le projet actuel est une **base validée fonctionnellement**, issue d’un clonage guidé d’une application de gestion de projet, puis adaptée comme point de départ.
+## Limites actuelles
 
-La suite du travail consiste à :
-- fiabiliser la logique métier ;
-- améliorer la structure ;
-- enrichir l’expérience utilisateur ;
-- ajouter des fonctionnalités différenciantes.
+Le projet est déjà fonctionnel, mais plusieurs améliorations sont encore nécessaires pour le rendre plus robuste :
 
----
+- contrôle d’autorisation métier insuffisant sur certaines actions sensibles ;
+- validation des entrées encore limitée ;
+- logique serveur très centralisée dans un seul fichier ;
+- statuts de tâche encore gérés en chaînes de caractères ;
+- rôles de projet non encore présents ;
+- UI encore perfectible sur certains flux et sur le responsive.
 
-## 13. Évolutions recommandées
-À court et moyen terme, les pistes les plus pertinentes sont :
-- rôles projet (`owner`, `manager`, `member`) ;
-- priorités de tâches ;
-- tâches en retard ;
-- dashboard enrichi ;
-- historique d’activité ;
-- Kanban ;
-- meilleure gestion mobile.
+## Feuille de route
 
----
+Les axes d’évolution prioritaires sont les suivants :
 
-## 14. Résumé
-L’application actuelle n’est plus un simple squelette.
+- sécuriser les actions serveur ;
+- améliorer la gestion des tâches ;
+- renforcer la collaboration ;
+- améliorer l’UX ;
+- refactoriser progressivement la structure du code ;
+- ajouter une ou deux fonctionnalités différenciantes. 
 
-C’est déjà une V1 exploitable de gestion de projets et tâches avec authentification, collaboration par invitation, création de tâches et suivi de leur statut.
+## Auteur
 
-Le vrai enjeu désormais est de la faire évoluer vers une version plus robuste, mieux sécurisée et mieux structurée.
+Projet réalisé par **Moulaye Cheikh Oumar KOUNTA**.
+
+## Remarque
+
+Cette application est actuellement à un stade de **base fonctionnelle avancée**. Elle n’est plus seulement au niveau “mise en place du squelette”, mais elle reste dans une phase de consolidation avant d’évoluer vers une version plus robuste et plus différenciante. citeturn455553view0turn455553view3
