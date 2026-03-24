@@ -14,6 +14,12 @@ import {
     assertTaskAccess,
     getCurrentDbUser,
 } from "@/lib/permissions";
+import {
+    createProjectSchema,
+    joinProjectSchema,
+    createTaskSchema,
+    updateTaskStatusSchema,
+} from "@/lib/validations";
 
 const ALLOWED_TASK_STATUSES = ["To Do", "In Progress", "Done"] as const;
 
@@ -49,25 +55,32 @@ function generateUniqueCode(): string {
 
 export async function createProject(name: string, description: string, email: string) {
     try {
+        const parsed = createProjectSchema.parse({
+            name,
+            description,
+            email,
+        });
 
-        const inviteCode = generateUniqueCode()
+        const inviteCode = generateUniqueCode();
+
         const user = await prisma.user.findUnique({
             where: {
-                email
-            }
-        })
+                email: parsed.email,
+            },
+        });
+
         if (!user) {
-            throw new Error('User not found');
+            throw new Error("Utilisateur non trouvé.");
         }
 
         const newProject = await prisma.project.create({
             data: {
-                name,
-                description,
+                name: parsed.name,
+                description: parsed.description || null,
                 inviteCode,
-                createdById: user.id
-            }
-        })
+                createdById: user.id,
+            },
+        });
 
         await prisma.projectUser.create({
             data: {
@@ -78,12 +91,10 @@ export async function createProject(name: string, description: string, email: st
         });
 
         return newProject;
-
     } catch (error) {
-        console.log(error)
-        throw new Error
+        console.log(error);
+        throw error instanceof Error ? error : new Error("Erreur lors de la création du projet");
     }
-
 }
 
 export async function getProjectsCreatedByUSer(email: string) {
@@ -146,39 +157,43 @@ export async function deleteProjectById(projectId: string) {
 }
 
 export async function addUserToProject(email: string, inviteCode: string) {
-
     try {
+        const parsed = joinProjectSchema.parse({
+            email,
+            inviteCode,
+        });
+
         const project = await prisma.project.findUnique({
             where: {
-                inviteCode
-            }
-        })
+                inviteCode: parsed.inviteCode,
+            },
+        });
 
         if (!project) {
-            throw new Error("Code d'invitation invalide")
+            throw new Error("Code d'invitation invalide");
         }
 
         const user = await prisma.user.findUnique({
             where: {
-                email
-            }
-        })
+                email: parsed.email,
+            },
+        });
 
         if (!user) {
-            throw new Error("Utilisateur non trouvé")
+            throw new Error("Utilisateur non trouvé");
         }
 
         const existingAssociation = await prisma.projectUser.findUnique({
             where: {
                 userId_projectId: {
                     projectId: project.id,
-                    userId: user.id
-                }
-            }
-        })
+                    userId: user.id,
+                },
+            },
+        });
 
         if (existingAssociation) {
-            throw new Error("L'utilisateur est déjà membre de ce projet")
+            throw new Error("L'utilisateur est déjà membre de ce projet");
         }
 
         await prisma.projectUser.create({
@@ -186,16 +201,14 @@ export async function addUserToProject(email: string, inviteCode: string) {
                 projectId: project.id,
                 userId: user.id,
                 role: "MEMBER",
-            }
-        })
+            },
+        });
 
-        return 'Utilisateur ajouté au projet avec succès';
-
+        return "Utilisateur ajouté au projet avec succès";
     } catch (error) {
-        console.error(error)
-        throw new Error
+        console.error(error);
+        throw error instanceof Error ? error : new Error("Erreur lors de l'ajout au projet");
     }
-
 }
 
 export async function getProjectsAssociatedWithUser(email: string) {
@@ -307,56 +320,57 @@ export async function createTask(
     projectId: string,
     assignToEmail: string | null
 ) {
-    try {
-        await assertHasProjectRole(projectId, ["OWNER", "MANAGER", "MEMBER"]);
+    const parsed = createTaskSchema.parse({
+        name,
+        description,
+        dueDate,
+        projectId,
+        assignToEmail,
+    });
 
-        const currentUser = await getCurrentDbUser();
+    const { user } = await assertProjectMember(parsed.projectId);
 
-        let assignedUserId = currentUser.id;
+    let assignedUserId: string | null = user.id;
 
-        if (assignToEmail) {
-            const assignedUser = await prisma.user.findUnique({
-                where: {
-                    email: assignToEmail,
-                },
-            });
-
-            if (!assignedUser) {
-                throw new ActionError("Utilisateur assigné introuvable.", 404);
-            }
-
-            const assignedMembership = await prisma.projectUser.findUnique({
-                where: {
-                    userId_projectId: {
-                        userId: assignedUser.id,
-                        projectId,
-                    },
-                },
-            });
-
-            if (!assignedMembership) {
-                throw new ActionError("L'utilisateur assigné n'appartient pas à ce projet.", 400);
-            }
-
-            assignedUserId = assignedUser.id;
-        }
-
-        const newTask = await prisma.task.create({
-            data: {
-                name,
-                description,
-                dueDate,
-                projectId,
-                createdById: currentUser.id,
-                userId: assignedUserId,
-            },
+    if (parsed.assignToEmail) {
+        const assignedUser = await prisma.user.findUnique({
+            where: { email: parsed.assignToEmail },
         });
 
-        return newTask;
-    } catch (error) {
-        console.log(error);
-        throw error instanceof Error ? error : new Error("Erreur lors de la création de la tâche");
+        if (!assignedUser) {
+            throw new ActionError("Utilisateur assigné introuvable.", 404);
+        }
+
+        const assignedUserHasAccess = await prisma.project.findFirst({
+            where: {
+                id: parsed.projectId,
+                OR: [
+                    { createdById: assignedUser.id },
+                    { users: { some: { userId: assignedUser.id } } },
+                ],
+            },
+            select: { id: true },
+        });
+
+        if (!assignedUserHasAccess) {
+            throw new ActionError("L'utilisateur assigné n'appartient pas à ce projet.", 400);
+        }
+
+        assignedUserId = assignedUser.id;
     }
+
+    const newTask = await prisma.task.create({
+        data: {
+            name: parsed.name,
+            description: parsed.description || "",
+            dueDate: parsed.dueDate,
+            projectId: parsed.projectId,
+            createdById: user.id,
+            userId: assignedUserId,
+        },
+    });
+
+    return newTask;
 }
 
 export async function deleteTaskById(taskId: string) {
@@ -411,53 +425,38 @@ export const updateTaskStatus = async (
     newStatus: string,
     solutionDescription?: string
 ) => {
-    try {
-        const existingTask = await prisma.task.findUnique({
-            where: { id: taskId },
-        });
+    const parsed = updateTaskStatusSchema.parse({
+        taskId,
+        newStatus,
+        solutionDescription,
+    });
 
-        if (!existingTask) {
-            throw new ActionError("Tâche non trouvée.", 404);
-        }
+    const { user, task } = await assertTaskAccess(parsed.taskId);
 
-        const membership = await getProjectMembership(existingTask.projectId);
+    const canUpdate =
+        task.userId === user.id ||
+        task.createdById === user.id ||
+        task.project.createdById === user.id;
 
-        const isManagerLike =
-            membership.role === "OWNER" || membership.role === "MANAGER";
-
-        const isAssignedMember =
-            membership.role === "MEMBER" && existingTask.userId === membership.userId;
-
-        if (!isManagerLike && !isAssignedMember) {
-            throw new ActionError("Vous n'êtes pas autorisé à modifier cette tâche.", 403);
-        }
-
-        if (
-            !ALLOWED_TASK_STATUSES.includes(
-                newStatus as (typeof ALLOWED_TASK_STATUSES)[number]
-            )
-        ) {
-            throw new ActionError("Statut de tâche invalide.", 400);
-        }
-
-        if (newStatus === "Done" && !solutionDescription?.trim()) {
-            throw new ActionError(
-                "Une description de solution est requise pour terminer la tâche.",
-                400
-            );
-        }
-
-        await prisma.task.update({
-            where: { id: taskId },
-            data: {
-                status: newStatus,
-                solutionDescription: newStatus === "Done" ? solutionDescription : null,
-            },
-        });
-
-        return { success: true, message: "Statut mis à jour avec succès." };
-    } catch (error) {
-        console.log(error);
-        throw error instanceof Error ? error : new Error("Erreur lors de la mise à jour du statut");
+    if (!canUpdate) {
+        throw new ActionError("Vous n'êtes pas autorisé à modifier cette tâche.", 403);
     }
+
+    if (parsed.newStatus === "Done" && !parsed.solutionDescription?.trim()) {
+        throw new ActionError(
+            "Une description de solution est requise pour terminer la tâche.",
+            400
+        );
+    }
+
+    await prisma.task.update({
+        where: { id: parsed.taskId },
+        data: {
+            status: parsed.newStatus,
+            solutionDescription:
+                parsed.newStatus === "Done" ? parsed.solutionDescription : null,
+        },
+    });
+
+    return { success: true, message: "Statut mis à jour avec succès." };
 };
