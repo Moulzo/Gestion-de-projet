@@ -23,8 +23,29 @@ import {
 } from "@/lib/validations";
 import { TASK_STATUSES, TASK_STATUS_VALUES } from "@/lib/task-status";
 import { sendTaskAssignmentEmail } from "@/lib/email";
+import { ActivityType } from "@prisma/client";
 
 const ALLOWED_TASK_STATUSES = TASK_STATUS_VALUES;
+
+async function createActivityLog(params: {
+    projectId: string;
+    actorUserId: string;
+    type: ActivityType;
+    message: string;
+}) {
+    try {
+        await prisma.activityLog.create({
+            data: {
+                projectId: params.projectId,
+                actorUserId: params.actorUserId,
+                type: params.type,
+                message: params.message,
+            },
+        });
+    } catch (error) {
+        console.error("Erreur lors de la création du log d'activité :", error);
+    }
+}
 
 export async function checkAndAddUser(email: string, name: string) {
     if (!email) return;
@@ -105,6 +126,13 @@ export async function createProject(name: string, description: string, email: st
                 userId: user.id,
                 role: "OWNER",
             },
+        });
+
+        await createActivityLog({
+            projectId: newProject.id,
+            actorUserId: user.id,
+            type: "PROJECT_CREATED",
+            message: `${user.name} a créé le projet "${newProject.name}".`,
         });
 
         return newProject;
@@ -219,6 +247,13 @@ export async function addUserToProject(email: string, inviteCode: string) {
                 userId: user.id,
                 role: "MEMBER",
             },
+        });
+
+        await createActivityLog({
+            projectId: project.id,
+            actorUserId: user.id,
+            type: "MEMBER_JOINED",
+            message: `${user.name} a rejoint le projet.`,
         });
 
         return "Utilisateur ajouté au projet avec succès";
@@ -358,11 +393,37 @@ export async function getProjectMembersWithRoles(projectId: string) {
     }));
 }
 
+export async function getProjectActivityLogs(projectId: string) {
+    await assertHasProjectRole(projectId, ["OWNER", "MANAGER", "MEMBER"]);
+
+    const logs = await prisma.activityLog.findMany({
+        where: {
+            projectId,
+        },
+        include: {
+            actor: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+        take: 20,
+    });
+
+    return logs;
+}
+
 export async function updateProjectMemberRole(
     projectId: string,
     memberUserId: string,
     newRole: "MANAGER" | "MEMBER"
 ) {
+    const currentUser = await getCurrentDbUser();
     await canAdminProject(projectId);
 
     if (!memberUserId) {
@@ -380,6 +441,9 @@ export async function updateProjectMemberRole(
                 projectId,
             },
         },
+        include: {
+            user: true,
+        },
     });
 
     if (!membership) {
@@ -389,6 +453,8 @@ export async function updateProjectMemberRole(
     if (membership.role === "OWNER") {
         throw new ActionError("Le rôle OWNER ne peut pas être modifié ici.", 400);
     }
+
+    const previousRole = membership.role;
 
     await prisma.projectUser.update({
         where: {
@@ -402,12 +468,20 @@ export async function updateProjectMemberRole(
         },
     });
 
+    await createActivityLog({
+        projectId,
+        actorUserId: currentUser.id,
+        type: "MEMBER_ROLE_UPDATED",
+        message: `${currentUser.name} a modifié le rôle de ${membership.user.name} : ${previousRole} → ${newRole}.`,
+    });
+
     revalidatePath(`/project/${projectId}`);
 
     return { success: true, message: "Rôle mis à jour avec succès." };
 }
 
 export async function removeProjectMember(projectId: string, memberUserId: string) {
+    const currentUser = await getCurrentDbUser();
     await canAdminProject(projectId);
 
     if (!memberUserId) {
@@ -420,6 +494,9 @@ export async function removeProjectMember(projectId: string, memberUserId: strin
                 userId: memberUserId,
                 projectId,
             },
+        },
+        include: {
+            user: true,
         },
     });
 
@@ -438,6 +515,13 @@ export async function removeProjectMember(projectId: string, memberUserId: strin
                 projectId,
             },
         },
+    });
+
+    await createActivityLog({
+        projectId,
+        actorUserId: currentUser.id,
+        type: "MEMBER_REMOVED",
+        message: `${currentUser.name} a retiré ${membership.user.name} du projet.`,
     });
 
     revalidatePath(`/project/${projectId}`);
@@ -535,6 +619,15 @@ export async function createTask(
         console.error("Erreur lors de l'envoi de l'email d'assignation :", error);
     }
 
+    await createActivityLog({
+        projectId: parsed.projectId,
+        actorUserId: user.id,
+        type: "TASK_CREATED",
+        message: assignedUserName && assignedUserId !== user.id
+            ? `${user.name} a créé la tâche "${newTask.name}" et l'a assignée à ${assignedUserName}.` 
+            : `${user.name} a créé la tâche "${newTask.name}".`,
+    });
+
     return newTask;
 }
 
@@ -621,6 +714,13 @@ export const updateTaskStatus = async (
             solutionDescription:
                 parsed.newStatus === TASK_STATUSES.DONE ? parsed.solutionDescription : null,
         },
+    });
+
+    await createActivityLog({
+        projectId: task.projectId,
+        actorUserId: user.id,
+        type: "TASK_STATUS_UPDATED",
+        message: `${user.name} a changé le statut de la tâche "${task.name}" en "${parsed.newStatus}".`,
     });
 
     return { success: true, message: "Statut mis à jour avec succès." };

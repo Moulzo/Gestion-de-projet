@@ -16,27 +16,38 @@ enum ProjectRole {
   MEMBER
 }
 
+enum ActivityType {
+  PROJECT_CREATED
+  MEMBER_JOINED
+  MEMBER_ROLE_UPDATED
+  MEMBER_REMOVED
+  TASK_CREATED
+  TASK_STATUS_UPDATED
+}
+
 model User {
-  id           String        @id @default(uuid())
-  name         String
-  email        String        @unique
-  tasks        Task[]
-  createdTasks Task[]        @relation("CreatedTasks")
-  projects     Project[]     @relation("UserProjects")
-  userProjects ProjectUser[]
+  id            String        @id @default(uuid())
+  name          String
+  email         String        @unique
+  tasks         Task[]
+  createdTasks  Task[]        @relation("CreatedTasks")
+  projects      Project[]     @relation("UserProjects")
+  userProjects  ProjectUser[]
+  activityLogs  ActivityLog[] @relation("ActivityActor")
 }
 
 model Project {
-  id          String        @id @default(uuid())
-  name        String
-  description String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  tasks       Task[]
-  inviteCode  String        @unique
-  createdById String
-  createdBy   User          @relation("UserProjects", fields: [createdById], references: [id])
-  users       ProjectUser[]
+  id           String        @id @default(uuid())
+  name         String
+  description  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  tasks        Task[]
+  inviteCode   String        @unique
+  createdById  String
+  createdBy    User          @relation("UserProjects", fields: [createdById], references: [id])
+  users        ProjectUser[]
+  activityLogs ActivityLog[]
 }
 
 model Task {
@@ -65,4 +76,18 @@ model ProjectUser {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
+}
+
+model ActivityLog {
+  id          String       @id @default(uuid())
+  projectId   String
+  actorUserId String
+  type        ActivityType
+  message     String
+  createdAt   DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor   User    @relation("ActivityActor", fields: [actorUserId], references: [id])
+
+  @@index([projectId, createdAt])
 }

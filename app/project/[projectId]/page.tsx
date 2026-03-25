@@ -2,6 +2,7 @@
 
 import {
     deleteTaskById,
+    getProjectActivityLogs,
     getProjectInfo,
     getProjectMembersWithRoles,
     removeProjectMember,
@@ -70,6 +71,18 @@ type PendingRemoval = {
     memberName: string;
 };
 
+type ActivityLogItem = {
+    id: string;
+    type: string;
+    message: string;
+    createdAt: Date | string;
+    actor: {
+        id: string;
+        name: string | null;
+        email: string;
+    };
+};
+
 const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
     const { user } = useUser();
     const email = user?.primaryEmailAddress?.emailAddress as string;
@@ -86,6 +99,9 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
         done: 0,
         assigned: 0,
     });
+
+    const [activityLogs, setActivityLogs] = useState<ActivityLogItem[]>([]);
+    const [activityLoading, setActivityLoading] = useState(false);
 
     const [pendingRoleChange, setPendingRoleChange] = useState<PendingRoleChange | null>(null);
     const [pendingRemoval, setPendingRemoval] = useState<PendingRemoval | null>(null);
@@ -117,12 +133,30 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
         }
     };
 
+    const fetchActivityLogs = async (projectId: string) => {
+        try {
+            setActivityLoading(true);
+            const logs = await getProjectActivityLogs(projectId);
+            setActivityLogs(logs as ActivityLogItem[]);
+        } catch (error) {
+            console.error("Erreur lors du chargement de l'activité :", error);
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erreur lors du chargement de l'activité"
+            );
+        } finally {
+            setActivityLoading(false);
+        }
+    };
+
     useEffect(() => {
         const getId = async () => {
             const resolvedParams = await params;
             setProjectId(resolvedParams.projectId);
             fetchInfos(resolvedParams.projectId);
             fetchMembers(resolvedParams.projectId);
+            fetchActivityLogs(resolvedParams.projectId);
         };
         getId();
     }, [params]);
@@ -186,6 +220,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
         try {
             await deleteTaskById(taskId);
             fetchInfos(projectId);
+            fetchActivityLogs(projectId);
             toast.success("Tâche supprimée avec succès");
         } catch (error) {
             toast.error(error instanceof Error ? error.message : "Une erreur est survenue");
@@ -220,6 +255,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                 pendingRoleChange.newRole
             );
             await fetchMembers(projectId);
+            await fetchActivityLogs(projectId);
             toast.success("Rôle mis à jour avec succès");
             closeRoleChangeModal();
         } catch (error) {
@@ -246,6 +282,7 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
             setIsSubmittingSensitiveAction(true);
             await removeProjectMember(projectId, pendingRemoval.memberUserId);
             await fetchMembers(projectId);
+            await fetchActivityLogs(projectId);
             toast.success("Collaborateur retiré avec succès");
             closeRemoveMemberModal();
         } catch (error) {
@@ -502,6 +539,34 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                                 imageAlt="Picture of an empty project"
                                 message="0 tâche à afficher"
                             />
+                        )}
+                    </div>
+
+                    <div className="mt-6 border border-base-300 p-4 md:p-5 shadow-sm rounded-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold">Activité récente</h2>
+                        </div>
+
+                        {activityLoading ? (
+                            <p className="text-sm opacity-70">Chargement de l'activité...</p>
+                        ) : activityLogs.length > 0 ? (
+                            <div className="space-y-3">
+                                {activityLogs.map((log) => (
+                                    <div
+                                        key={log.id}
+                                        className="border border-base-300 rounded-lg p-3"
+                                    >
+                                        <p className="text-sm break-words">{log.message}</p>
+                                        <p className="text-xs opacity-60 mt-1">
+                                            {new Date(log.createdAt).toLocaleString("fr-FR")}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm opacity-70">
+                                Aucune activité récente pour ce projet.
+                            </p>
                         )}
                     </div>
                 </section>
