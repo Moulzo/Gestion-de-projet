@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect, useState } from "react";
 import Wrapper from "./components/Wrapper";
@@ -11,69 +11,82 @@ import ProjectComponent from "./components/ProjectComponent";
 import EmptyState from "./components/EmptyState";
 
 export default function Home() {
-
-  const { user } = useUser()
-  const email = user?.primaryEmailAddress?.emailAddress as string
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [projects, setProjects] = useState<Project[]>([])
+  const { user } = useUser();
+  const email = user?.primaryEmailAddress?.emailAddress as string;
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const fetchProjects = async (email: string) => {
     try {
-      const myproject = await getProjectsCreatedByUSer(email)
-      setProjects(myproject)
-      console.log(myproject)
+      const myproject = await getProjectsCreatedByUSer(email);
+      setProjects(myproject);
     } catch (error) {
-      console.error(`Erreur lors du chargement des projets:`, error)
+      console.error(`Erreur lors du chargement des projets:`, error);
     }
-  }
+  };
 
   useEffect(() => {
     if (email) {
-      fetchProjects(email)
+      fetchProjects(email);
     }
-  }, [email])
+  }, [email]);
 
   const deleteProject = async (projectId: string) => {
     try {
-      await deleteProjectById(projectId)
-      fetchProjects(email)
-      toast.success("Projet supprimé !")
+      await deleteProjectById(projectId);
+      await fetchProjects(email);
+      toast.success("Projet supprimé !");
     } catch (error) {
-      throw new Error(`Error deleting project:` + error);
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression");
+      throw error;
     }
-  }
+  };
 
   const handleSubmit = async () => {
     try {
-      const modal = document.getElementById('my_modal_3') as HTMLDialogElement
-      const project = await createProject(name, description, email)
+      const modal = document.getElementById("my_modal_3") as HTMLDialogElement;
+      await createProject(name, description, email);
+
       if (modal) {
-        modal.close()
+        modal.close();
       }
-      setName(""),
-        setDescription("")
-      fetchProjects(email)
-      toast.success("Projet Créé")
+
+      setName("");
+      setDescription("");
+      fetchProjects(email);
+      toast.success("Projet créé");
     } catch (error) {
       console.error(`Error creating project:`, error);
+      toast.error("Erreur lors de la création du projet");
     }
-  }
+  };
 
   return (
     <Wrapper>
       <div>
+        <button
+          className="btn btn-soft btn-primary border border-base-300 mb-6"
+          onClick={() =>
+            (document.getElementById("my_modal_3") as HTMLDialogElement).showModal()
+          }
+        >
+          Nouveau Projet <FolderKanban />
+        </button>
 
-        {/* You can open the modal using document.getElementById('ID').showModal() method */}
-        <button className="btn btn-soft btn-primary border border-base-300 mb-6" onClick={() => (document.getElementById('my_modal_3') as HTMLDialogElement).showModal()}>Nouveau Projet <FolderKanban /></button>
         <dialog id="my_modal_3" className="modal">
           <div className="modal-box">
             <form method="dialog">
-              {/* if there is a button in form, it will close the modal */}
-              <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+              <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+                ✕
+              </button>
             </form>
+
             <h3 className="font-bold text-lg">Nouveau Projet</h3>
-            <p className="py-4">Décrivez votre projet simplement grâce à la description</p>
+            <p className="py-4">
+              Décrivez votre projet simplement grâce à la description
+            </p>
+
             <div>
               <input
                 placeholder="Nom du projet"
@@ -83,14 +96,15 @@ export default function Home() {
                 className="border border-base-300 input input-bordered w-full mb-4 placeholder:text-sm"
                 required
               />
+
               <textarea
                 placeholder="Description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="mb-2 textarea textarea-bordered border border-base-300 w-full textarea-md placeholder:text-sm"
                 required
-              >
-              </textarea>
+              />
+
               <button className="btn btn-primary" onClick={handleSubmit}>
                 Nouveau Projet <FolderKanban />
               </button>
@@ -101,24 +115,27 @@ export default function Home() {
         <div className="w-full">
           {projects.length > 0 ? (
             <ul className="w-full grid md:grid-cols-3 gap-6">
-              {
-                projects.map((project) => (
-                  <li key={project.id}>
-                    <ProjectComponent project={project} admin={1} style={true} onDelete={deleteProject}></ProjectComponent>
-                  </li>
-                ))
-              }
+              {projects.map((project) => (
+                <li key={project.id}>
+                  <ProjectComponent
+                    project={project}
+                    admin={1}
+                    style={true}
+                    onDelete={deleteProject}
+                  />
+                </li>
+              ))}
             </ul>
           ) : (
             <div>
               <EmptyState
-                imageSrc='/empty-project.png' 
+                imageSrc="/empty-project.png"
                 imageAlt="Picture of an empty project"
-                message="Aucun projet créé"/>
+                message="Aucun projet créé"
+              />
             </div>
           )}
         </div>
-
       </div>
     </Wrapper>
   );

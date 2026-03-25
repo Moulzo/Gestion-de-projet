@@ -1,158 +1,248 @@
-import { Project } from '@/type'
-import { Copy, ExternalLink, FolderKanban, Trash } from 'lucide-react';
-import Link from 'next/link';
-import React, { FC } from 'react'
-import { toast } from 'react-toastify';
-import { deleteProjectById } from '../actions';
+"use client";
+
+import { Project } from "@/type";
+import {
+    ArrowRight,
+    Calendar,
+    Copy,
+    FolderKanban,
+    PencilLine,
+    Trash2,
+    Users,
+} from "lucide-react";
+import Link from "next/link";
+import React, { FC, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
 interface ProjectProps {
-    project: Project
+    project: Project;
     admin: number;
-    style: boolean
-    onDelete?: (id: string) => void;
+    style: boolean;
+    onDelete?: (projectId: string) => Promise<void> | void;
 }
 
 const ProjectComponent: FC<ProjectProps> = ({ project, admin, style, onDelete }) => {
+    const [copied, setCopied] = useState(false);
+    const [deleteInput, setDeleteInput] = useState("");
+    const modalId = useMemo(() => `delete_project_modal_${project.id}`, [project.id]);
 
-    const handleDeleteClick = () => {
-        const isConfirmed = window.confirm("Êtes-vous sûr de vouloir supprimer ce projet ?")
-        if (isConfirmed && onDelete) {
-            onDelete(project.id)
+    const totalTasks = project.tasks?.length || 0;
+    const collaboratorsCount = project.users?.length || 0;
+
+    const toDoTasks =
+        project.tasks?.filter((task) => task.status === "To Do").length || 0;
+    const inProgressTasks =
+        project.tasks?.filter((task) => task.status === "In Progress").length || 0;
+    const doneTasks =
+        project.tasks?.filter((task) => task.status === "Done").length || 0;
+
+    const progressPercentage =
+        totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+    const inProgressPercentage =
+        totalTasks > 0 ? Math.round((inProgressTasks / totalTasks) * 100) : 0;
+    const toDoPercentage =
+        totalTasks > 0 ? Math.round((toDoTasks / totalTasks) * 100) : 0;
+
+    const openDeleteModal = () => {
+        setDeleteInput("");
+        const modal = document.getElementById(modalId) as HTMLDialogElement | null;
+        modal?.showModal();
+    };
+
+    const closeDeleteModal = () => {
+        const modal = document.getElementById(modalId) as HTMLDialogElement | null;
+        modal?.close();
+        setDeleteInput("");
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!onDelete) return;
+
+        if (deleteInput.trim() !== project.name.trim()) {
+            toast.error("Le nom du projet ne correspond pas.");
+            return;
         }
-    }
 
-    const totalTasks = project.tasks?.length
-    const tasksByStatus = project.tasks?.reduce(
-        (acc, task) => {
-            if (task.status === "To Do") acc.toDo++;
-            else if (task.status === "In Progress") acc.inProgress++;
-            else if (task.status === "Done") acc.done++;
-            return acc
-        },
-        {
-            toDo: 0, inProgress: 0, done: 0
-        }
-    ) ?? { toDo: 0, inProgress: 0, done: 0 }
-
-    const progressPercentage = totalTasks ? Math.round((tasksByStatus.done / totalTasks) * 100) : 0
-    const inProgressPercentage = totalTasks ? Math.round((tasksByStatus.inProgress / totalTasks) * 100) : 0
-    const toDoPercentage = totalTasks ? Math.round((tasksByStatus.toDo / totalTasks) * 100) : 0
-
-
-    const textSizeClass = style ? 'text-sm' : 'text-md'
-
-    const handleCopyCode = async () => {
         try {
-            if (project.inviteCode) {
-                await navigator.clipboard.writeText(project.inviteCode)
-                toast.success("Code d'invitation copié")
-            }
+            await onDelete(project.id);
+            closeDeleteModal();
         } catch (error) {
-            toast.error("Erreur lors de la copie du code d'invitation")
+            toast.error("Erreur lors de la suppression du projet.");
         }
+    };
 
-    }
+    const handleCopyInviteCode = async () => {
+        try {
+            await navigator.clipboard.writeText(project.inviteCode);
+            setCopied(true);
+            toast.success("Code d'invitation copié !");
+            setTimeout(() => setCopied(false), 1500);
+        } catch (err) {
+            toast.error("Impossible de copier le code");
+        }
+    };
 
     return (
-        <div key={project.id} className={` ${style ? 'border border-base-300 p-5 shadow-sm' : ''} text-base-content rounded-xl w-full text-left`}>
-            <div className='w-full flex items-center mb-3'>
+        <>
+            <div
+                className={`w-full border rounded-xl p-5 shadow-sm transition hover:shadow-md ${
+                    style ? "border-base-300" : "border-base-300"
+                }`}
+            >
+                <div className="flex justify-between items-start gap-4">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-primary/10 rounded-full p-2">
+                                <FolderKanban className="w-5 h-5 text-primary" />
+                            </div>
+                            <h2 className="font-bold text-lg break-words">{project.name}</h2>
+                        </div>
 
-                <div className='bg-primary text-xl h-10 w-10 rounded-lg flex justify-center items-center'>
-                    <FolderKanban className='w-6' />
+                        {project.description && (
+                            <p className="text-sm opacity-70 break-words mb-4">
+                                {project.description}
+                            </p>
+                        )}
+                    </div>
+
+                    {admin === 1 && onDelete && (
+                        <button
+                            onClick={openDeleteModal}
+                            className="btn btn-sm btn-outline btn-error shrink-0"
+                            title="Supprimer le projet"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
-                <div className='badge ml-3 font-bold'>
-                    {project.name}
-                </div>
-            </div>
 
-            {style == false && (
-                <p className='text-sm text-gra-500 border border-base-300 p-5 mb-6 rounded-xl'>
-                    {project.description}
-                </p>
-            )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-center gap-2 text-sm opacity-80">
+                        <Users className="w-4 h-4" />
+                        <span>{collaboratorsCount} collaborateur(s)</span>
+                    </div>
 
-            <div className={`mb-3`}>
-                <span>
-                    Collborateurs
-                </span>
-                <div className='badge badge-sm badge-ghost ml-1'>{project.users?.length}</div>
-            </div>
+                    <div className="flex items-center gap-2 text-sm opacity-80">
+                        <PencilLine className="w-4 h-4" />
+                        <span>{totalTasks} tâche(s)</span>
+                    </div>
 
-            {admin === 1 && (
-                <div className='flex justify-between items-center rounded-lg p-2 border border-base-300 mb-3 bg-base-200/30'>
-                    <p className='text-primary font-bold ml-3'>
-                        {project.inviteCode}                    </p>
-                    <button className='btn btn-sm ml-2'>
-                        <Copy className='w-4' onClick={handleCopyCode} />
+                    <div className="flex items-center gap-2 text-sm opacity-80">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                            Créé le {new Date(project.createdAt).toLocaleDateString()}
+                        </span>
+                    </div>
+
+                    <button
+                        onClick={handleCopyInviteCode}
+                        className="btn btn-xs btn-outline w-fit"
+                        type="button"
+                    >
+                        <Copy className="w-3 h-3" />
+                        {copied ? "Copié" : "Code d'invitation"}
                     </button>
                 </div>
-            )}
 
-            <div className='flex flex-col mb-3'>
-                <h2 className={`text-gray-500 mb-2 ${textSizeClass}`}>
-                    <span className='font-bold'>
-                        A faire
-                    </span>
-                    <div className='badge badge-ghost badge-sm ml-1'>
-                        {tasksByStatus.toDo}
+                <div className="space-y-3">
+                    <div>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span>Terminées</span>
+                            <span>{progressPercentage}%</span>
+                        </div>
+                        <progress
+                            className="progress progress-success w-full"
+                            value={progressPercentage}
+                            max="100"
+                        />
                     </div>
-                </h2>
-                <progress className="progress progress-primary w-full" value={toDoPercentage} max="100"></progress>
-                <div className='flex'>
-                    <span className={`text-gray-400 mt-2 ${textSizeClass}`}>{toDoPercentage}%</span>
-                </div>
-            </div>
 
-            <div className='flex flex-col mb-3'>
-                <h2 className={`text-gray-500 mb-2 ${textSizeClass}`}>
-                    <span className='font-bold'>
-                        En cours
-                    </span>
-                    <div className='badge badge-ghost badge-sm ml-1'>
-                        {tasksByStatus.inProgress}
+                    <div>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span>En cours</span>
+                            <span>{inProgressPercentage}%</span>
+                        </div>
+                        <progress
+                            className="progress progress-warning w-full"
+                            value={inProgressPercentage}
+                            max="100"
+                        />
                     </div>
-                </h2>
-                <progress className="progress progress-primary w-full" value={inProgressPercentage} max="100"></progress>
-                <div className='flex'>
-                    <span className={`text-gray-400 mt-2 ${textSizeClass}`}>{inProgressPercentage}%</span>
-                </div>
-            </div>
 
-            <div className='flex flex-col mb-3'>
-                <h2 className={`text-gray-500 mb-2 ${textSizeClass}`}>
-                    <span className='font-bold'>
-                        Terminée(s)
-                    </span>
-                    <div className='badge badge-ghost badge-sm ml-1'>
-                        {tasksByStatus.done}
+                    <div>
+                        <div className="flex justify-between text-sm mb-1">
+                            <span>À faire</span>
+                            <span>{toDoPercentage}%</span>
+                        </div>
+                        <progress
+                            className="progress progress-error w-full"
+                            value={toDoPercentage}
+                            max="100"
+                        />
                     </div>
-                </h2>
-                <progress className="progress progress-primary w-full" value={progressPercentage} max="100"></progress>
-                <div className='flex'>
-                    <span className={`text-gray-400 mt-2 ${textSizeClass}`}>{progressPercentage}%</span>
                 </div>
-            </div>
 
-            <div className='flex'>
-
-                {style && (
-                    <Link className='btn btn-primary btn-sm' href={`/project/${project.id}`}>
-                        <div className='badge badge-sm'>{totalTasks}</div>
-                        Tâches
-                        <ExternalLink className='w-4' />
+                <div className="mt-5">
+                    <Link href={`/project/${project.id}`} className="btn btn-primary btn-sm">
+                        Ouvrir
+                        <ArrowRight className="w-4 h-4" />
                     </Link>
-                )}
-
-                {admin === 1 && (
-                    <button className='btn btn-sm ml-3' onClick={handleDeleteClick}>
-                        <Trash className='w-4' />
-                    </button>
-                )}
+                </div>
             </div>
 
+            <dialog id={modalId} className="modal">
+                <div className="modal-box">
+                    <form method="dialog">
+                        <button
+                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                            onClick={closeDeleteModal}
+                        >
+                            ✕
+                        </button>
+                    </form>
 
-        </div>
-    )
-}
+                    <h3 className="font-bold text-lg">Supprimer le projet</h3>
 
-export default ProjectComponent
+                    <p className="py-3 text-sm opacity-80">
+                        Cette action est définitive. Pour confirmer, retapez le nom du projet :
+                    </p>
+
+                    <div className="alert alert-warning mb-4">
+                        <span className="break-words">
+                            <strong>{project.name}</strong>
+                        </span>
+                    </div>
+
+                    <input
+                        type="text"
+                        value={deleteInput}
+                        onChange={(e) => setDeleteInput(e.target.value)}
+                        placeholder="Retapez le nom du projet"
+                        className="input input-bordered w-full"
+                    />
+
+                    <div className="modal-action">
+                        <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={closeDeleteModal}
+                        >
+                            Annuler
+                        </button>
+
+                        <button
+                            type="button"
+                            className="btn btn-error"
+                            onClick={handleConfirmDelete}
+                            disabled={deleteInput.trim() !== project.name.trim()}
+                        >
+                            Supprimer définitivement
+                        </button>
+                    </div>
+                </div>
+            </dialog>
+        </>
+    );
+};
+
+export default ProjectComponent;
