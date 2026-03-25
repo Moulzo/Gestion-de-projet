@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: app-gestion-postgres
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_DB: app_gestion_projets
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - app_gestion_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  app_gestion_postgres_data:

@@ -28,15 +28,15 @@ Le README initial du dépôt décrivait surtout une base encore en construction,
 
 ## Stack technique
 
-- **Framework** : Next.js 16 (App Router) 
+- **Framework** : Next.js 16 (App Router)
 - **Langage** : TypeScript
-- **UI** : Tailwind CSS v4 + DaisyUI 
-- **Authentification** : Clerk (`@clerk/nextjs`) 
-- **ORM** : Prisma 
-- **Base de données** : SQLite en développement via `DATABASE_URL`
-- **Notifications UI** : React Toastify 
-- **Icônes** : Lucide React 
-- **Éditeur riche présent dans les dépendances** : `react-quill-new` 
+- **UI** : Tailwind CSS v4 + DaisyUI
+- **Authentification** : Clerk (`@clerk/nextjs`)
+- **ORM** : Prisma
+- **Base de données** : PostgreSQL
+- **Notifications UI** : React Toastify
+- **Icônes** : Lucide React
+- **Éditeur riche** : `react-quill-new` 
 
 ## Fonctionnalités actuelles
 
@@ -161,65 +161,73 @@ npm install
 
 ### 3. Configurer les variables d’environnement
 
-Créer un fichier `.env` à la racine du projet avec une configuration de ce type :
+Créer un fichier `.env` à la racine du projet :
 
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://app_user@127.0.0.1:5434/app_gestion_projets?schema=public"
 ```
 
-Le projet actuel dépend bien de Clerk pour l’authentification et de Prisma avec SQLite pour la persistance locale. 
+### 4. Démarrer PostgreSQL avec Docker
 
-### 4. Appliquer les migrations Prisma
+```bash
+docker compose up -d
+```
+
+### 5. Appliquer les migrations Prisma
 
 ```bash
 npx prisma migrate dev
 ```
 
-### 5. Générer le client Prisma
+### 6. Générer le client Prisma
 
 ```bash
 npx prisma generate
 ```
 
-### 6. Lancer l’application
+### 7. Lancer l’application
 
 ```bash
 npm run dev
 ```
 
-L’application sera ensuite disponible sur :
+L’application sera disponible sur :
 
-```text
 http://localhost:3000
-```
 
-## Scripts disponibles
+## Base de données
+
+Le projet utilise désormais **PostgreSQL** en développement local.
+
+Le service PostgreSQL est défini dans `docker-compose.yml` et exposé localement sur le port `5434` afin d’éviter les conflits avec d’autres projets pouvant déjà utiliser PostgreSQL.
+
+Commandes utiles :
 
 ```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
+docker compose up -d
+docker compose down
+docker compose ps
 ```
 
-Ces scripts sont bien ceux actuellement déclarés dans `package.json`.
+## Workflow conseillé à partir de maintenant
 
-## Workflow actuel de l’application
+Pour lancer le projet proprement :
 
-1. L’utilisateur se connecte ou crée un compte via Clerk.
-2. Son profil est synchronisé dans la base locale si nécessaire.
-3. Il peut créer un projet.
-4. Un code d’invitation unique est généré pour ce projet.
-5. Il peut consulter ses projets personnels.
-6. Il peut rejoindre un autre projet via le code d’invitation.
-7. Il peut consulter les projets auxquels il participe.
-8. Dans un projet, il peut visualiser les tâches et les membres.
-9. Il peut créer une tâche et l’affecter à un utilisateur.
-10. Il peut ouvrir une tâche et faire évoluer son statut jusqu’à `Done`, avec une solution associée si besoin.
+```bash
+docker compose up -d
+npx prisma migrate dev
+npm run dev
+```
+
+Et pour arrêter la base :
+
+```bash
+docker compose down
+```
 
 ## Limites actuelles
 
