@@ -57,6 +57,25 @@ const updateMeetingStatusSchema = z.object({
     status: z.enum(["SCHEDULED", "COMPLETED", "CANCELLED"]),
 });
 
+const addMeetingRecordingSchema = z.object({
+    meetingId: z.string().trim().min(1, "Réunion invalide."),
+    title: z
+        .string()
+        .trim()
+        .min(2, "Le titre doit contenir au moins 2 caractères.")
+        .max(120, "Le titre est trop long."),
+    url: z
+        .string()
+        .trim()
+        .url("Lien d'enregistrement invalide."),
+    description: z
+        .string()
+        .trim()
+        .max(2000, "La description est trop longue.")
+        .optional()
+        .or(z.literal("")),
+});
+
 function normalizeOptionalString(value?: string | null) {
     if (!value) return null;
     const trimmed = value.trim();
@@ -90,6 +109,24 @@ async function getMeetingForVideoManagement(meetingId: string) {
             externalUrl: true,
             provider: true,
             status: true,
+        },
+    });
+
+    if (!meeting) {
+        throw new ActionError("Réunion introuvable.", 404);
+    }
+
+    await assertHasTeamRole(meeting.teamId, ["OWNER", "MANAGER"]);
+
+    return meeting;
+}
+
+async function getMeetingForRecordingManagement(meetingId: string) {
+    const meeting = await prisma.teamMeeting.findUnique({
+        where: { id: meetingId },
+        select: {
+            id: true,
+            teamId: true,
         },
     });
 
@@ -207,6 +244,11 @@ export async function getMeetingsForCurrentUser() {
                     email: true,
                 },
             },
+            // recordings: {
+            //     select: {
+            //         id: true,
+            //     },
+            // },
         },
         orderBy: {
             scheduledAt: "desc",
@@ -456,5 +498,119 @@ export async function removeMeetingVideoLink(meetingId: string) {
         success: true,
         message: "Lien de visioconférence supprimé avec succès.",
         meeting: updatedMeeting,
+    };
+}
+
+export async function getMeetingRecordings(meetingId: string) {
+    const user = await getCurrentDbUser();
+
+    const meeting = await prisma.teamMeeting.findUnique({
+        where: { id: meetingId },
+        include: {
+            team: {
+                include: {
+                    members: {
+                        where: { userId: user.id },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!meeting) {
+        throw new ActionError("Réunion introuvable.", 404);
+    }
+
+    if (meeting.team.members.length === 0) {
+        throw new ActionError("Accès refusé à cette réunion.", 403);
+    }
+
+    return prisma.meetingRecording.findMany({
+        where: { meetingId },
+        include: {
+            addedBy: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+}
+
+export async function addMeetingRecording(input: {
+    meetingId: string;
+    title: string;
+    url: string;
+    description?: string;
+}) {
+    const parsed = addMeetingRecordingSchema.parse(input);
+    const user = await getCurrentDbUser();
+    const meeting = await getMeetingForRecordingManagement(parsed.meetingId);
+
+    const recording = await prisma.meetingRecording.create({
+        data: {
+            meetingId: parsed.meetingId,
+            title: parsed.title,
+            url: parsed.url,
+            description: normalizeOptionalString(parsed.description),
+            addedById: user.id,
+        },
+        include: {
+            addedBy: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            },
+        },
+    });
+
+    revalidateMeetingPaths(parsed.meetingId, meeting.teamId);
+
+    return {
+        success: true,
+        message: "Enregistrement ajouté avec succès.",
+        recording,
+    };
+}
+
+export async function removeMeetingRecording(recordingId: string) {
+    if (!recordingId?.trim()) {
+        throw new ActionError("Enregistrement invalide.", 400);
+    }
+
+    const recording = await prisma.meetingRecording.findUnique({
+        where: { id: recordingId },
+        include: {
+            meeting: {
+                select: {
+                    id: true,
+                    teamId: true,
+                },
+            },
+        },
+    });
+
+    if (!recording) {
+        throw new ActionError("Enregistrement introuvable.", 404);
+    }
+
+    await assertHasTeamRole(recording.meeting.teamId, ["OWNER", "MANAGER"]);
+
+    await prisma.meetingRecording.delete({
+        where: { id: recordingId },
+    });
+
+    revalidateMeetingPaths(recording.meeting.id, recording.meeting.teamId);
+
+    return {
+        success: true,
+        message: "Enregistrement supprimé avec succès.",
     };
 }

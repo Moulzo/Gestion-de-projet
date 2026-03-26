@@ -457,6 +457,13 @@ const page = () => {
                                             )}
                                         </div>
 
+                                        {meeting.recordings && meeting.recordings.length > 0 ? (
+                                            <p className="flex items-center gap-2 text-sm opacity-75">
+                                                <FileText className="w-4 h-4" />
+                                                {meeting.recordings.length} enregistrement{meeting.recordings.length > 1 ? "s" : ""}
+                                            </p>
+                                        ) : null}
+
                                         <Link href={`/meetings/${meeting.id}`} className="btn btn-sm btn-outline self-start sm:self-auto">
                                             Voir le détail
                                             <ArrowRight className="w-4 h-4" />

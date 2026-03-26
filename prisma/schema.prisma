@@ -61,9 +61,10 @@ model User {
   userProjects ProjectUser[]
   activityLogs ActivityLog[] @relation("ActivityActor")
 
-  createdTeams    Team[]        @relation("CreatedTeams")
-  teamMembers     TeamMember[]
-  createdMeetings TeamMeeting[] @relation("CreatedMeetings")
+  createdTeams           Team[]             @relation("CreatedTeams")
+  teamMembers            TeamMember[]
+  createdMeetings        TeamMeeting[]      @relation("CreatedMeetings")
+  addedMeetingRecordings MeetingRecording[] @relation("RecordingAddedBy")
 }
 
 model Team {
@@ -77,9 +78,10 @@ model Team {
   createdById String
   createdBy   User   @relation("CreatedTeams", fields: [createdById], references: [id])
 
-  members  TeamMember[]
-  projects Project[]
-  meetings TeamMeeting[]
+  members    TeamMember[]
+  projects   Project[]
+  meetings   TeamMeeting[]
+  recordings MeetingRecording[]
 }
 
 model TeamMember {
@@ -178,9 +180,28 @@ model TeamMeeting {
   project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   createdBy User     @relation("CreatedMeetings", fields: [createdById], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  meetingRecordings MeetingRecording[]
 
   @@index([teamId, scheduledAt])
   @@index([projectId, scheduledAt])
+}
+
+model MeetingRecording {
+  id          String   @id @default(uuid())
+  title       String
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+
+  meetingId String
+  addedById String
+
+  meeting TeamMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  addedBy User        @relation("RecordingAddedBy", fields: [addedById], references: [id])
+  team    Team?       @relation(fields: [teamId], references: [id])
+  teamId  String?
+
+  @@index([meetingId, createdAt])
 }

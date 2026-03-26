@@ -3,14 +3,16 @@
 import React, { useEffect, useState } from "react";
 import Wrapper from "@/app/components/Wrapper";
 import {
+    addMeetingRecording,
     generateJitsiMeetingLink,
     getMeetingDetails,
     regenerateJitsiMeetingLink,
+    removeMeetingRecording,
     removeMeetingVideoLink,
     updateMeetingNotes,
     updateMeetingStatus,
 } from "@/app/actions";
-import { TeamMeeting } from "@/type";
+import { MeetingRecording, TeamMeeting } from "@/type";
 import {
     ArrowLeft,
     CalendarDays,
@@ -19,6 +21,7 @@ import {
     FileText,
     FolderKanban,
     Link2,
+    Plus,
     RefreshCw,
     Trash2,
     Video,
@@ -54,6 +57,12 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     const [generatingJitsi, setGeneratingJitsi] = useState(false);
     const [regeneratingJitsi, setRegeneratingJitsi] = useState(false);
     const [removingVideoLink, setRemovingVideoLink] = useState(false);
+
+    const [recordingTitle, setRecordingTitle] = useState("");
+    const [recordingUrl, setRecordingUrl] = useState("");
+    const [recordingDescription, setRecordingDescription] = useState("");
+    const [addingRecording, setAddingRecording] = useState(false);
+    const [removingRecordingId, setRemovingRecordingId] = useState<string | null>(null);
 
     const fetchMeeting = async (id: string) => {
         try {
@@ -190,6 +199,50 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
         }
     };
 
+    const handleAddRecording = async () => {
+        if (!meetingId) return;
+
+        try {
+            setAddingRecording(true);
+            await addMeetingRecording({
+                meetingId,
+                title: recordingTitle,
+                url: recordingUrl,
+                description: recordingDescription,
+            });
+            setRecordingTitle("");
+            setRecordingUrl("");
+            setRecordingDescription("");
+            await fetchMeeting(meetingId);
+            toast.success("Enregistrement ajouté avec succès.");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erreur lors de l'ajout de l'enregistrement."
+            );
+        } finally {
+            setAddingRecording(false);
+        }
+    };
+
+    const handleRemoveRecording = async (recordingId: string) => {
+        try {
+            setRemovingRecordingId(recordingId);
+            await removeMeetingRecording(recordingId);
+            await fetchMeeting(meetingId);
+            toast.success("Enregistrement supprimé.");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erreur lors de la suppression de l'enregistrement."
+            );
+        } finally {
+            setRemovingRecordingId(null);
+        }
+    };
+
     if (loading) {
         return (
             <Wrapper>
@@ -212,6 +265,7 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
 
     const isCancelled = meeting.status === "CANCELLED";
     const hasVideoLink = Boolean(meeting.externalUrl);
+    const recordings = meeting.recordings || [];
 
     return (
         <Wrapper>
@@ -414,6 +468,103 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                             <CheckCircle2 className="w-4 h-4" />
                         </button>
                     </div>
+                </div>
+
+                <div className="rounded-xl border border-base-300 p-4 md:p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-3">
+                        <FileText className="w-4 h-4" />
+                        <h2 className="text-lg font-semibold">Enregistrements</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 mb-5">
+                        <input
+                            type="text"
+                            placeholder="Titre de l'enregistrement"
+                            className="input input-bordered w-full"
+                            value={recordingTitle}
+                            onChange={(e) => setRecordingTitle(e.target.value)}
+                        />
+
+                        <input
+                            type="url"
+                            placeholder="Lien de l'enregistrement"
+                            className="input input-bordered w-full"
+                            value={recordingUrl}
+                            onChange={(e) => setRecordingUrl(e.target.value)}
+                        />
+
+                        <textarea
+                            placeholder="Description (optionnelle)"
+                            className="textarea textarea-bordered w-full"
+                            value={recordingDescription}
+                            onChange={(e) => setRecordingDescription(e.target.value)}
+                        />
+
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                className="btn btn-primary w-full sm:w-auto"
+                                onClick={handleAddRecording}
+                                disabled={addingRecording}
+                            >
+                                <Plus className="w-4 h-4" />
+                                Ajouter un enregistrement
+                            </button>
+                        </div>
+                    </div>
+
+                    {recordings.length > 0 ? (
+                        <div className="space-y-3">
+                            {recordings.map((recording: MeetingRecording) => (
+                                <div
+                                    key={recording.id}
+                                    className="rounded-lg border border-base-300 p-3"
+                                >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0">
+                                            <p className="font-medium break-words">{recording.title}</p>
+                                            <a
+                                                href={recording.url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="link link-primary text-sm break-all mt-1 inline-block"
+                                            >
+                                                {recording.url}
+                                            </a>
+
+                                            {recording.description ? (
+                                                <p className="text-sm opacity-75 mt-2 break-words">
+                                                    {recording.description}
+                                                </p>
+                                            ) : null}
+
+                                            <p className="text-xs opacity-60 mt-2">
+                                                Ajouté le{" "}
+                                                {new Date(recording.createdAt).toLocaleString("fr-FR")}
+                                                {recording.addedBy
+                                                    ? ` par ${recording.addedBy.name || recording.addedBy.email}` 
+                                                    : ""}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-error btn-outline self-start"
+                                            onClick={() => handleRemoveRecording(recording.id)}
+                                            disabled={removingRecordingId === recording.id}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm opacity-70">
+                            Aucun enregistrement ajouté pour le moment.
+                        </p>
+                    )}
                 </div>
             </div>
         </Wrapper>

@@ -1,5 +1,6 @@
 import {
     MeetingProvider,
+    MeetingRecording as PrismaMeetingRecording,
     MeetingStatus,
     Project as PrismaProject,
     Task as PrismaTask,
@@ -81,10 +82,15 @@ export type Task = PrismaTask & {
     createdBy?: User | null;
 };
 
+export type MeetingRecording = PrismaMeetingRecording & {
+    addedBy?: User;
+};
+
 export type TeamMeeting = PrismaTeamMeeting & {
     team?: Team;
     project?: Project | null;
     createdBy?: User;
+    recordings?: MeetingRecording[];
 };
 
 export type TeamMeetingStatus = MeetingStatus;
