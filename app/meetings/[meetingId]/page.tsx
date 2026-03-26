@@ -14,12 +14,14 @@ import {
 } from "@/app/actions";
 import { MeetingRecording, TeamMeeting } from "@/type";
 import {
+    AlertTriangle,
     ArrowLeft,
     CalendarDays,
     CheckCircle2,
     Copy,
     FileText,
     FolderKanban,
+    Info,
     Link2,
     Plus,
     RefreshCw,
@@ -93,6 +95,7 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
 
     const handleSaveNotes = async () => {
         if (!meetingId) return;
+        if (!canManageMeeting) return;
 
         try {
             setSavingNotes(true);
@@ -113,7 +116,7 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     const handleStatusChange = async (
         status: "SCHEDULED" | "COMPLETED" | "CANCELLED"
     ) => {
-        if (!meetingId) return;
+        if (!meetingId || !canManageMeeting) return;
 
         try {
             setSavingStatus(true);
@@ -132,7 +135,7 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     };
 
     const handleGenerateJitsi = async () => {
-        if (!meetingId) return;
+        if (!meetingId || !canManageMeeting) return;
 
         try {
             setGeneratingJitsi(true);
@@ -151,7 +154,12 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     };
 
     const handleRegenerateJitsi = async () => {
-        if (!meetingId) return;
+        if (!meetingId || !canManageMeeting) return;
+
+        const confirmed = window.confirm(
+            "Voulez-vous vraiment régénérer le lien Jitsi ? L'ancien lien ne devra plus être partagé."
+        );
+        if (!confirmed) return;
 
         try {
             setRegeneratingJitsi(true);
@@ -170,7 +178,12 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     };
 
     const handleRemoveVideoLink = async () => {
-        if (!meetingId) return;
+        if (!meetingId || !canManageMeeting) return;
+
+        const confirmed = window.confirm(
+            "Voulez-vous vraiment supprimer le lien de visioconférence ?"
+        );
+        if (!confirmed) return;
 
         try {
             setRemovingVideoLink(true);
@@ -200,7 +213,7 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     };
 
     const handleAddRecording = async () => {
-        if (!meetingId) return;
+        if (!meetingId || !canManageMeeting) return;
 
         try {
             setAddingRecording(true);
@@ -227,6 +240,13 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     };
 
     const handleRemoveRecording = async (recordingId: string) => {
+        if (!canManageMeeting) return;
+
+        const confirmed = window.confirm(
+            "Voulez-vous vraiment supprimer cet enregistrement ?"
+        );
+        if (!confirmed) return;
+
         try {
             setRemovingRecordingId(recordingId);
             await removeMeetingRecording(recordingId);
@@ -266,6 +286,9 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     const isCancelled = meeting.status === "CANCELLED";
     const hasVideoLink = Boolean(meeting.externalUrl);
     const recordings = meeting.recordings || [];
+    const canManageMeeting =
+        meeting.currentUserTeamRole === "OWNER" ||
+        meeting.currentUserTeamRole === "MANAGER";
 
     return (
         <Wrapper>
@@ -316,24 +339,39 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                                         Durée prévue : {meeting.durationMinutes} min
                                     </p>
                                 ) : null}
+
+                                <p className="text-xs opacity-60">
+                                    Votre rôle sur cette réunion :{" "}
+                                    {meeting.currentUserTeamRole === "OWNER"
+                                        ? "Propriétaire"
+                                        : meeting.currentUserTeamRole === "MANAGER"
+                                        ? "Manager"
+                                        : "Membre"}
+                                </p>
                             </div>
                         </div>
 
                         <div className="w-full lg:w-auto">
-                            <select
-                                className="select select-bordered w-full lg:w-56"
-                                value={meeting.status}
-                                onChange={(e) =>
-                                    handleStatusChange(
-                                        e.target.value as "SCHEDULED" | "COMPLETED" | "CANCELLED"
-                                    )
-                                }
-                                disabled={savingStatus}
-                            >
-                                <option value="SCHEDULED">Planifiée</option>
-                                <option value="COMPLETED">Terminée</option>
-                                <option value="CANCELLED">Annulée</option>
-                            </select>
+                            {canManageMeeting ? (
+                                <select
+                                    className="select select-bordered w-full lg:w-56"
+                                    value={meeting.status}
+                                    onChange={(e) =>
+                                        handleStatusChange(
+                                            e.target.value as "SCHEDULED" | "COMPLETED" | "CANCELLED"
+                                        )
+                                    }
+                                    disabled={savingStatus}
+                                >
+                                    <option value="SCHEDULED">Planifiée</option>
+                                    <option value="COMPLETED">Terminée</option>
+                                    <option value="CANCELLED">Annulée</option>
+                                </select>
+                            ) : (
+                                <div className="badge badge-outline h-auto py-2">
+                                    Lecture seule
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -363,8 +401,9 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
 
                         {isCancelled && (
                             <div className="alert alert-warning">
+                                <AlertTriangle className="w-4 h-4" />
                                 <span>
-                                    Cette réunion est annulée. La génération ou régénération d’un lien Jitsi est désactivée.
+                                    Cette réunion est annulée. La génération ou régénération d'un lien Jitsi est désactivée.
                                 </span>
                             </div>
                         )}
@@ -404,42 +443,52 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                                         Copier le lien
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline w-full sm:w-auto"
-                                        onClick={handleRegenerateJitsi}
-                                        disabled={regeneratingJitsi || isCancelled}
-                                    >
-                                        <RefreshCw className="w-4 h-4" />
-                                        Régénérer le lien
-                                    </button>
+                                    {canManageMeeting && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline w-full sm:w-auto"
+                                                onClick={handleRegenerateJitsi}
+                                                disabled={regeneratingJitsi || isCancelled}
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
+                                                Régénérer le lien
+                                            </button>
 
-                                    <button
-                                        type="button"
-                                        className="btn btn-error btn-outline w-full sm:w-auto"
-                                        onClick={handleRemoveVideoLink}
-                                        disabled={removingVideoLink}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        Supprimer le lien
-                                    </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-error btn-outline w-full sm:w-auto"
+                                                onClick={handleRemoveVideoLink}
+                                                disabled={removingVideoLink}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Supprimer le lien
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </>
                         ) : (
                             <div className="space-y-3">
                                 <p className="text-sm opacity-70">
-                                    Aucun lien de visioconférence n’est encore associé à cette réunion.
+                                    Aucun lien de visioconférence n'est encore associé à cette réunion.
                                 </p>
 
-                                <button
-                                    type="button"
-                                    className="btn btn-primary w-full sm:w-auto"
-                                    onClick={handleGenerateJitsi}
-                                    disabled={generatingJitsi || isCancelled}
-                                >
-                                    <Video className="w-4 h-4" />
-                                    Créer un lien Jitsi
-                                </button>
+                                {canManageMeeting ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary w-full sm:w-auto"
+                                        onClick={handleGenerateJitsi}
+                                        disabled={generatingJitsi || isCancelled}
+                                    >
+                                        <Video className="w-4 h-4" />
+                                        Créer un lien Jitsi
+                                    </button>
+                                ) : (
+                                    <p className="text-xs opacity-60">
+                                        Seuls les propriétaires et managers peuvent configurer la visio.
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -456,17 +505,24 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                         onChange={(e) => setNotes(e.target.value)}
                         className="textarea textarea-bordered w-full min-h-56"
                         placeholder="Ajoutez ici le compte-rendu détaillé de la réunion..."
+                        readOnly={!canManageMeeting}
                     />
 
                     <div className="mt-4 flex justify-end">
-                        <button
-                            className="btn btn-primary w-full sm:w-auto"
-                            onClick={handleSaveNotes}
-                            disabled={savingNotes}
-                        >
-                            Enregistrer le compte-rendu
-                            <CheckCircle2 className="w-4 h-4" />
-                        </button>
+                        {canManageMeeting ? (
+                            <button
+                                className="btn btn-primary w-full sm:w-auto"
+                                onClick={handleSaveNotes}
+                                disabled={savingNotes}
+                            >
+                                Enregistrer le compte-rendu
+                                <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                        ) : (
+                            <p className="text-xs opacity-60">
+                                Le compte-rendu est visible en lecture seule pour les membres.
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -476,42 +532,60 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                         <h2 className="text-lg font-semibold">Enregistrements</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 mb-5">
-                        <input
-                            type="text"
-                            placeholder="Titre de l'enregistrement"
-                            className="input input-bordered w-full"
-                            value={recordingTitle}
-                            onChange={(e) => setRecordingTitle(e.target.value)}
-                        />
+                    {canManageMeeting ? (
+                        <>
+                            <div className="alert alert-info mb-5">
+                                <Info className="w-4 h-4" />
+                                <span>
+                                    Si l'enregistrement Jitsi est sauvegardé en local, uploadez d'abord le fichier sur Drive, Dropbox ou un stockage partagé, puis collez ici le lien partageable.
+                                </span>
+                            </div>
 
-                        <input
-                            type="url"
-                            placeholder="Lien de l'enregistrement"
-                            className="input input-bordered w-full"
-                            value={recordingUrl}
-                            onChange={(e) => setRecordingUrl(e.target.value)}
-                        />
+                            <div className="grid grid-cols-1 gap-4 mb-5">
+                                <input
+                                    type="text"
+                                    placeholder="Titre de l'enregistrement"
+                                    className="input input-bordered w-full"
+                                    value={recordingTitle}
+                                    onChange={(e) => setRecordingTitle(e.target.value)}
+                                />
 
-                        <textarea
-                            placeholder="Description (optionnelle)"
-                            className="textarea textarea-bordered w-full"
-                            value={recordingDescription}
-                            onChange={(e) => setRecordingDescription(e.target.value)}
-                        />
+                                <input
+                                    type="url"
+                                    placeholder="Lien de l'enregistrement"
+                                    className="input input-bordered w-full"
+                                    value={recordingUrl}
+                                    onChange={(e) => setRecordingUrl(e.target.value)}
+                                />
 
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
-                                className="btn btn-primary w-full sm:w-auto"
-                                onClick={handleAddRecording}
-                                disabled={addingRecording}
-                            >
-                                <Plus className="w-4 h-4" />
-                                Ajouter un enregistrement
-                            </button>
+                                <textarea
+                                    placeholder="Description (optionnelle)"
+                                    className="textarea textarea-bordered w-full"
+                                    value={recordingDescription}
+                                    onChange={(e) => setRecordingDescription(e.target.value)}
+                                />
+
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary w-full sm:w-auto"
+                                        onClick={handleAddRecording}
+                                        disabled={addingRecording}
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Ajouter un enregistrement
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="alert alert-info mb-5">
+                            <Info className="w-4 h-4" />
+                            <span>
+                                Les enregistrements sont visibles par les membres, mais seuls les propriétaires et managers peuvent en ajouter ou en supprimer.
+                            </span>
                         </div>
-                    </div>
+                    )}
 
                     {recordings.length > 0 ? (
                         <div className="space-y-3">
@@ -547,15 +621,17 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                                             </p>
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-error btn-outline self-start"
-                                            onClick={() => handleRemoveRecording(recording.id)}
-                                            disabled={removingRecordingId === recording.id}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                            Supprimer
-                                        </button>
+                                        {canManageMeeting && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-error btn-outline self-start"
+                                                onClick={() => handleRemoveRecording(recording.id)}
+                                                disabled={removingRecordingId === recording.id}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                Supprimer
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

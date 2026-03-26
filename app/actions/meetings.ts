@@ -322,6 +322,7 @@ export async function getMeetingDetails(meetingId: string) {
             id: meeting.team.id,
             name: meeting.team.name,
         },
+        currentUserTeamRole: meeting.team.members[0]?.role ?? null,
     };
 }
 

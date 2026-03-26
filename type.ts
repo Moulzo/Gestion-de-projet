@@ -91,6 +91,7 @@ export type TeamMeeting = PrismaTeamMeeting & {
     project?: Project | null;
     createdBy?: User;
     recordings?: MeetingRecording[];
+    currentUserTeamRole?: TeamRole | null;
 };
 
 export type TeamMeetingStatus = MeetingStatus;
