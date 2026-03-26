@@ -3,9 +3,8 @@
 import { randomBytes } from "crypto";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { getCurrentDbUser } from "@/lib/permissions";
 import { assertProjectMember, ActionError } from "@/lib/permissions";
-import { canAdminProject, assertHasProjectRole } from "@/lib/project-roles";
+import { canAdminProject } from "@/lib/project-roles";
 import { createActivityLog } from "./activity";
 
 const createProjectSchema = z.object({
@@ -20,7 +19,7 @@ const joinProjectSchema = z.object({
 });
 
 function generateUniqueCode(): string {
-    return randomBytes(6).toString('hex')
+    return randomBytes(6).toString("hex");
 }
 
 export async function createProject(name: string, description: string, email: string) {
@@ -57,6 +56,7 @@ export async function createProject(name: string, description: string, email: st
                 projectId: newProject.id,
                 userId: user.id,
                 role: "OWNER",
+                scope: "INTERNAL",
             },
         });
 
@@ -76,17 +76,16 @@ export async function createProject(name: string, description: string, email: st
 
 export async function getProjectsCreatedByUSer(email: string) {
     try {
-
         const projects = await prisma.project.findMany({
             where: {
-                createdBy: { email }
+                createdBy: { email },
             },
             include: {
                 tasks: {
                     include: {
                         user: true,
-                        createdBy: true
-                    }
+                        createdBy: true,
+                    },
                 },
                 users: {
                     select: {
@@ -94,26 +93,32 @@ export async function getProjectsCreatedByUSer(email: string) {
                             select: {
                                 id: true,
                                 name: true,
-                                email: true
-                            }
-                        }
-                    }
-                }
-            }
-        })
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                createdBy: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
 
-        const formattedProjects = projects.map((project) => ({
+        return projects.map((project) => ({
             ...project,
-            users: project.users.map((userEntry: any) => userEntry.user)
-        }))
-
-        return formattedProjects
-
+            users: project.users.map((userEntry) => userEntry.user),
+        }));
     } catch (error) {
-        console.error(error)
-        throw new Error
+        console.error(error);
+        throw new Error("Erreur lors de la récupération des projets créés.");
     }
-
 }
 
 export async function deleteProjectById(projectId: string) {
@@ -178,6 +183,7 @@ export async function addUserToProject(email: string, inviteCode: string) {
                 projectId: project.id,
                 userId: user.id,
                 role: "MEMBER",
+                scope: "INTERNAL",
             },
         });
 
@@ -202,48 +208,12 @@ export async function getProjectsAssociatedWithUser(email: string) {
                 users: {
                     some: {
                         user: {
-                            email
-                        }
-                    }
-                }
+                            email,
+                        },
+                    },
+                },
             },
             include: {
-                tasks: true,
-                users: {
-                    select: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        const formattedProjects = projects.map((project) => ({
-            ...project,
-            users: project.users.map((userEntry: any) => userEntry.user)
-        }))
-
-        return formattedProjects
-
-    } catch (error) {
-        console.error(error)
-        throw new Error
-    }
-
-}
-
-export async function getProjectInfo(idProject: string, details: boolean) {
-    await assertProjectMember(idProject);
-
-    const project = await prisma.project.findUnique({
-        where: { id: idProject },
-        include: details
-            ? {
                 tasks: {
                     include: {
                         user: true,
@@ -261,16 +231,86 @@ export async function getProjectInfo(idProject: string, details: boolean) {
                         },
                     },
                 },
-                createdBy: true,
-            }
-            : {
+                team: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
                 createdBy: true,
             },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return projects.map((project) => ({
+            ...project,
+            users: project.users.map((userEntry) => userEntry.user),
+        }));
+    } catch (error) {
+        console.error(error);
+        throw new Error("Erreur lors de la récupération des projets associés.");
+    }
+}
+
+export async function getProjectInfo(idProject: string, details: boolean) {
+    await assertProjectMember(idProject);
+
+    const project = await prisma.project.findUnique({
+        where: { id: idProject },
+        include: details
+            ? {
+                  tasks: {
+                      include: {
+                          user: true,
+                          createdBy: true,
+                      },
+                  },
+                  users: {
+                      select: {
+                          user: {
+                              select: {
+                                  id: true,
+                                  name: true,
+                                  email: true,
+                              },
+                          },
+                      },
+                  },
+                  createdBy: true,
+                  team: {
+                      select: {
+                          id: true,
+                          name: true,
+                          description: true,
+                          inviteCode: true,
+                          createdAt: true,
+                          updatedAt: true,
+                          createdById: true,
+                      },
+                  },
+              }
+            : {
+                  createdBy: true,
+                  team: {
+                      select: {
+                          id: true,
+                          name: true,
+                      },
+                  },
+              },
     });
 
     if (!project) {
         throw new ActionError("Projet non trouvé.", 404);
     }
 
-    return project;
+    return {
+        ...project,
+        users:
+            "users" in project && Array.isArray(project.users)
+                ? project.users.map((entry) => entry.user)
+                : undefined,
+    };
 }

@@ -31,6 +31,28 @@ export async function getCurrentDbUser() {
     return user;
 }
 
+export async function assertTeamMember(teamId: string) {
+    const user = await getCurrentDbUser();
+
+    const membership = await prisma.teamMember.findUnique({
+        where: {
+            teamId_userId: {
+                teamId,
+                userId: user.id,
+            },
+        },
+        include: {
+            team: true,
+        },
+    });
+
+    if (!membership) {
+        throw new ActionError("Accès refusé à cette équipe.", 403);
+    }
+
+    return { user, team: membership.team, membership };
+}
+
 export async function assertProjectMember(projectId: string) {
     const user = await getCurrentDbUser();
 
@@ -45,6 +67,7 @@ export async function assertProjectMember(projectId: string) {
         select: {
             id: true,
             createdById: true,
+            teamId: true,
         },
     });
 

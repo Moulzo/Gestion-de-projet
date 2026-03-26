@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban, Menu, X } from "lucide-react";
+import { FolderKanban, Menu, UsersRound, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -13,8 +13,9 @@ const Navbar = () => {
     const pathname = usePathname();
 
     const navLinks = [
-        { href: "/general-projects", label: "Collaborations" },
-        { href: "/", label: "Mes projets" },
+        { href: "/teams", label: "Équipes", icon: <UsersRound className="w-4 h-4" /> },
+        { href: "/general-projects", label: "Collaborations", icon: null },
+        { href: "/", label: "Mes projets", icon: null },
     ];
 
     useEffect(() => {
@@ -30,13 +31,14 @@ const Navbar = () => {
         pathname.replace(/\/$/, "") === href.replace(/\/$/, "");
 
     const renderLinks = (classNames: string) =>
-        navLinks.map(({ href, label }) => (
+        navLinks.map(({ href, label, icon }) => (
             <Link
                 key={href}
                 href={href}
                 onClick={() => setMenuOpen(false)}
                 className={`${classNames} ${isActiveLink(href) ? "btn-primary" : "btn-ghost"}`}
             >
+                {icon}
                 {label}
             </Link>
         ));

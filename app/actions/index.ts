@@ -19,6 +19,18 @@ export {
     removeProjectMember,
 } from "./members";
 
+// Teams
+export {
+    createTeam,
+    getTeamsForCurrentUser,
+    getTeamDetails,
+    joinTeamByInviteCode,
+    getTeamMembers,
+    updateTeamMemberRole,
+    removeTeamMember,
+    attachProjectToTeam,
+} from "./teams";
+
 // Tasks
 export {
     createTask,

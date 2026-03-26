@@ -18,6 +18,8 @@ import { TASK_STATUSES } from "@/lib/task-status";
 import { Project, ProjectRole, ProjectUserMember } from "@/type";
 import { useUser } from "@clerk/nextjs";
 import {
+    ArrowRight,
+    Building2,
     CircleCheckBig,
     CopyPlus,
     Crown,
@@ -311,9 +313,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
         return (
             <div
                 key={member.userId}
-                className={`rounded-lg border p-3 ${
-                    isOwner ? "border-primary/40 bg-base-200/60" : "border-base-300"
-                }`}
+                className={`rounded-lg border p-3 ${isOwner ? "border-primary/40 bg-base-200/60" : "border-base-300"
+                    }`}
             >
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -327,9 +328,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                     </div>
 
                     <span
-                        className={`badge shrink-0 ${
-                            isOwner ? "badge-primary" : "badge-outline"
-                        }`}
+                        className={`badge shrink-0 ${isOwner ? "badge-primary" : "badge-outline"
+                            }`}
                     >
                         {PROJECT_ROLE_LABELS[member.role]}
                     </span>
@@ -438,6 +438,38 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
                             <ProjectComponent project={project} admin={0} style={false} />
                         )}
                     </div>
+
+                    <div className="p-5 border border-base-300 rounded-xl mt-6">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="w-4 h-4" />
+                            <h2 className="font-semibold text-lg leading-tight">Équipe liée</h2>
+                        </div>
+
+                        {project?.team ? (
+                            <div className="space-y-3">
+                                <div className="rounded-lg border border-base-300 p-3">
+                                    <p className="font-medium break-words">{project.team.name}</p>
+                                    <p className="text-sm opacity-70 mt-1">
+                                        Ce projet est rattaché à une équipe.
+                                    </p>
+                                </div>
+
+                                <Link
+                                    href={`/teams/${project.team.id}`}
+                                    className="btn btn-sm btn-outline w-full"
+                                >
+                                    Voir l'équipe
+                                    <ArrowRight className="w-4 h-4" />
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="rounded-lg border border-dashed border-base-300 p-3">
+                                <p className="text-sm opacity-70">
+                                    Ce projet n'est rattaché à aucune équipe pour le moment.
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </aside>
 
                 <section className="min-w-0 flex-1">
@@ -457,9 +489,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
                                 <button
                                     onClick={() => setStatusFilter(TASK_STATUSES.TODO)}
-                                    className={`btn btn-sm ${
-                                        statusFilter === TASK_STATUSES.TODO ? "btn-primary" : ""
-                                    }`}
+                                    className={`btn btn-sm ${statusFilter === TASK_STATUSES.TODO ? "btn-primary" : ""
+                                        }`}
                                 >
                                     <ListTodo className="w-4" />
                                     À faire ({taskCounts.todo})
@@ -467,9 +498,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
                                 <button
                                     onClick={() => setStatusFilter(TASK_STATUSES.IN_PROGRESS)}
-                                    className={`btn btn-sm ${
-                                        statusFilter === TASK_STATUSES.IN_PROGRESS ? "btn-primary" : ""
-                                    }`}
+                                    className={`btn btn-sm ${statusFilter === TASK_STATUSES.IN_PROGRESS ? "btn-primary" : ""
+                                        }`}
                                 >
                                     <Loader className="w-4" />
                                     En Cours ({taskCounts.inProgress})
@@ -477,9 +507,8 @@ const page = ({ params }: { params: Promise<{ projectId: string }> }) => {
 
                                 <button
                                     onClick={() => setStatusFilter(TASK_STATUSES.DONE)}
-                                    className={`btn btn-sm ${
-                                        statusFilter === TASK_STATUSES.DONE ? "btn-primary" : ""
-                                    }`}
+                                    className={`btn btn-sm ${statusFilter === TASK_STATUSES.DONE ? "btn-primary" : ""
+                                        }`}
                                 >
                                     <CircleCheckBig className="w-4" />
                                     Terminée(s) ({taskCounts.done})
