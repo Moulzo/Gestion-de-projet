@@ -1,4 +1,12 @@
-import { Project as PrismaProject, Task as PrismaTask, Team as PrismaTeam, User } from "@prisma/client";
+import {
+    MeetingProvider,
+    MeetingStatus,
+    Project as PrismaProject,
+    Task as PrismaTask,
+    Team as PrismaTeam,
+    TeamMeeting as PrismaTeamMeeting,
+    User,
+} from "@prisma/client";
 
 export type ProjectRole = "OWNER" | "MANAGER" | "MEMBER";
 export type TeamRole = "OWNER" | "MANAGER" | "MEMBER";
@@ -34,6 +42,7 @@ export type Team = PrismaTeam & {
     createdBy?: User;
     members?: TeamMember[];
     projects?: Project[];
+    meetings?: TeamMeeting[];
 };
 
 export type Project = PrismaProject & {
@@ -64,9 +73,19 @@ export type Project = PrismaProject & {
         inviteCode?: string;
         createdById?: string;
     } | null;
+    meetings?: TeamMeeting[];
 };
 
 export type Task = PrismaTask & {
     user?: User | null;
     createdBy?: User | null;
 };
+
+export type TeamMeeting = PrismaTeamMeeting & {
+    team?: Team;
+    project?: Project | null;
+    createdBy?: User;
+};
+
+export type TeamMeetingStatus = MeetingStatus;
+export type TeamMeetingProvider = MeetingProvider;

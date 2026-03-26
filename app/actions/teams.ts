@@ -172,6 +172,26 @@ export async function getTeamDetails(teamId: string) {
                     createdAt: "desc",
                 },
             },
+            meetings: {
+                include: {
+                    project: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    createdBy: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        },
+                    },
+                },
+                orderBy: {
+                    scheduledAt: "desc",
+                },
+            },
         },
     });
 

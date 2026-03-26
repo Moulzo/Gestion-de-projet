@@ -31,6 +31,16 @@ export {
     attachProjectToTeam,
 } from "./teams";
 
+// Meetings
+export {
+    createMeeting,
+    getMeetingsForCurrentUser,
+    getTeamProjectsForMeeting,
+    getMeetingDetails,
+    updateMeetingNotes,
+    updateMeetingStatus,
+} from "./meetings";
+
 // Tasks
 export {
     createTask,
