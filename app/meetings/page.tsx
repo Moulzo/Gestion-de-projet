@@ -457,10 +457,10 @@ const page = () => {
                                             )}
                                         </div>
 
-                                        {meeting.recordings && meeting.recordings.length > 0 ? (
+                                        {meeting.meetingRecordings && meeting.meetingRecordings.length > 0 ? (
                                             <p className="flex items-center gap-2 text-sm opacity-75">
                                                 <FileText className="w-4 h-4" />
-                                                {meeting.recordings.length} enregistrement{meeting.recordings.length > 1 ? "s" : ""}
+                                                {meeting.meetingRecordings.length} enregistrement{meeting.meetingRecordings.length > 1 ? "s" : ""}
                                             </p>
                                         ) : null}
 
