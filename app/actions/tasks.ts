@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import prisma from "@/lib/prisma";
-import { assertTaskAccess, ActionError } from "@/lib/permissions";
+import { assertProjectMember, assertTaskAccess, ActionError } from "@/lib/permissions";
 import { sendTaskAssignmentEmail } from "@/lib/email";
 import { TASK_STATUSES } from "@/lib/task-status";
 import { createActivityLog } from "./activity";
@@ -36,7 +36,7 @@ export async function createTask(
         assignToEmail,
     });
 
-    const { user } = await assertTaskAccess(parsed.projectId);
+    const { user } = await assertProjectMember(parsed.projectId);
 
     let assignedUserId: string | null = user.id;
     let assignedUserEmail: string | null = user.email;
