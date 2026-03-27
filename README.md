@@ -1,150 +1,188 @@
-# Gestion de projet
+# Sunu Projets — Application de gestion de projet
 
-Application web de gestion de projets et de tâches destinée au suivi de l’avancement des projets d’une équipe de développement.
+Application web de gestion de projets, tâches, équipes et réunions, conçue pour un usage interne en entreprise.  
+Le projet est développé avec Next.js App Router, TypeScript, Tailwind CSS + DaisyUI, Clerk pour l’authentification, Prisma avec PostgreSQL, Resend pour les emails transactionnels, et une intégration Jitsi V1 basée sur des liens externes de réunion.
 
-Le projet repose sur une base fonctionnelle déjà exploitable : création de projets, ajout de collaborateurs via code d’invitation, consultation des projets personnels et collaboratifs, création de tâches, consultation du détail d’une tâche et mise à jour de son statut. La pile actuelle s’appuie sur Next.js App Router, TypeScript, Clerk, Prisma et SQLite. 
+---
 
-## Objectif
+## 1. Objectif du projet
 
-L’objectif de l’application est de proposer un outil simple à prendre en main pour suivre l’évolution des projets de l’équipe, répartir les tâches et visualiser l’état d’avancement sans alourdir le flux de travail. Cette orientation correspond aussi au besoin initial formulé pour le stage : une application facile d’utilisation, mais pas trop simpliste. 
+L’objectif de l’application est de fournir une base de travail simple, claire et exploitable pour :
 
-## État actuel du projet
+- structurer le suivi des projets ;
+- répartir les tâches entre collaborateurs ;
+- gérer des équipes / workspaces ;
+- organiser des réunions d’équipe ou liées à un projet ;
+- centraliser des comptes-rendus et des liens d’enregistrement ;
+- conserver une UX responsive, notamment sur mobile.
 
-À ce stade, l’application permet déjà de couvrir un premier workflow métier :
+L’application est déjà utilisable en interne, tout en restant en évolution active.
 
-- authentification via Clerk ;
-- synchronisation de l’utilisateur en base locale ;
-- création d’un projet avec génération d’un code d’invitation ;
-- consultation des projets créés par l’utilisateur ;
-- jointure à un projet via un code d’invitation ;
-- consultation des projets collaboratifs ;
-- affichage du détail d’un projet avec ses tâches et ses membres ;
-- création de tâches ;
-- consultation du détail d’une tâche ;
-- mise à jour du statut d’une tâche ;
-- suppression de projets et de tâches. 
+---
 
-Le README initial du dépôt décrivait surtout une base encore en construction, avec une navigation “en cours” et plusieurs pages métier encore annoncées comme à créer. Or le projet actuel expose déjà un socle métier plus avancé que cette description.
+## 2. État actuel du projet
 
-## Stack technique
+Le dépôt public reflète aujourd’hui une version plus avancée que la première base clonée :
 
-- **Framework** : Next.js 16 (App Router)
-- **Langage** : TypeScript
-- **UI** : Tailwind CSS v4 + DaisyUI
-- **Authentification** : Clerk (`@clerk/nextjs`)
-- **ORM** : Prisma
-- **Base de données** : PostgreSQL
-- **Notifications UI** : React Toastify
-- **Icônes** : Lucide React
-- **Éditeur riche** : `react-quill-new` 
+- authentification Clerk et routes privées protégées ;
+- synchronisation des utilisateurs Clerk dans la base applicative ;
+- création de projets et jointure par code d’invitation ;
+- rôles collaborateurs par projet (`OWNER`, `MANAGER`, `MEMBER`) ;
+- historique d’activité projet ;
+- gestion des tâches et de leur statut ;
+- assignation de tâches avec notification email via Resend ;
+- module équipes / workspaces ;
+- rattachement d’un projet à une équipe ;
+- module réunions ;
+- réunions liées à une équipe, avec projet optionnel ;
+- lien de réunion externe (V1 Jitsi) ;
+- gestion des enregistrements via URL.
 
-## Fonctionnalités actuelles
+---
 
-### Authentification et accès
-- pages de connexion et d’inscription gérées avec Clerk ;
-- protection des routes privées prévue via `proxy.ts` ;
-- création ou vérification de l’utilisateur en base grâce à `checkAndAddUser(email, name)`. 
+## 3. Stack technique
 
-### Gestion des projets
-- création d’un projet ;
-- génération automatique d’un code d’invitation unique ;
-- récupération des projets créés par l’utilisateur ;
-- récupération des projets auxquels l’utilisateur participe ;
-- suppression d’un projet. 
+### Frontend
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS v4
+- DaisyUI
+- Lucide React
+- React Toastify
+- react-quill-new
 
-### Collaboration
-- ajout d’un utilisateur à un projet via un code d’invitation ;
-- prévention des doublons d’association entre utilisateur et projet via la contrainte `@@unique([userId, projectId])` dans `ProjectUser` ;
-- récupération de la liste des membres d’un projet. 
+### Backend / logique serveur
+- Server Actions Next.js
+- Clerk (`@clerk/nextjs`)
+- Prisma ORM
+- PostgreSQL
+- Zod
 
-### Gestion des tâches
-- création d’une tâche dans un projet ;
-- affectation facultative à un utilisateur, ou par défaut au créateur ;
-- récupération du détail complet d’une tâche ;
-- mise à jour du statut d’une tâche ;
-- enregistrement d’une description de solution si la tâche est marquée comme terminée ;
-- suppression d’une tâche.
+### Services externes
+- Clerk pour l’authentification
+- Resend pour les emails
+- Jitsi en V1 via lien externe de réunion
 
-## Modèle de données actuel
+---
 
-Le schéma Prisma actuel repose sur quatre entités principales :
+## 4. Dépendances importantes observées dans le dépôt
 
-### `User`
-Représente un utilisateur de l’application.
+Le dépôt utilise notamment :
 
-Champs notables :
-- `id`
-- `name`
-- `email`
+- `next`, `react`, `react-dom`
+- `@clerk/nextjs`
+- `@prisma/client`
+- `resend`
+- `zod`
+- `react-toastify`
+- `react-quill-new`
 
-Relations :
-- tâches assignées ;
-- tâches créées ;
-- projets créés ;
-- appartenance aux projets via `ProjectUser`. 
+Scripts disponibles :
 
-### `Project`
-Représente un projet suivi dans l’application.
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
-Champs notables :
-- `id`
-- `name`
-- `description`
-- `createdAt`
-- `updatedAt`
-- `inviteCode`
-- `createdById`
+---
 
-Relations :
-- créateur ;
-- tâches ;
-- utilisateurs associés. 
-### `Task`
-Représente une tâche liée à un projet.
+## 5. Modèle métier actuel
 
-Champs notables :
-- `id`
-- `name`
-- `description`
-- `status`
-- `dueDate`
-- `solutionDescription`
-- `projectId`
-- `userId`
-- `createdById` 
+### Utilisateurs
+L’utilisateur applicatif est synchronisé à partir de Clerk et sert de base aux relations métier.
 
-### `ProjectUser`
-Table de jointure entre utilisateurs et projets.
+### Équipes / workspaces
+Le modèle `Team` permet de structurer les utilisateurs à un niveau supérieur au projet, avec des rôles d’équipe (`OWNER`, `MANAGER`, `MEMBER`).
 
-Rôle actuel :
-- gérer l’association collaborateur/projet ;
-- empêcher les doublons via une contrainte d’unicité. 
+### Projets
+Un projet peut être autonome ou rattaché à une équipe.  
+Les collaborateurs projet sont gérés via `ProjectUser`, avec rôles projet et portée (`INTERNAL` / `EXTERNAL`).
 
-## Organisation du projet
+### Tâches
+Une tâche appartient à un projet, peut être assignée à un utilisateur, possède un statut, une échéance éventuelle et une description de solution.
 
-Structure logique actuelle décrite par le dépôt :
+### Activité
+Le modèle `ActivityLog` journalise plusieurs événements métier du projet.
+
+### Réunions
+Le modèle `TeamMeeting` gère les réunions d’équipe, avec :
+- équipe obligatoire ;
+- projet optionnel ;
+- statut (`SCHEDULED`, `COMPLETED`, `CANCELLED`) ;
+- provider (`NONE`, `JITSI`) ;
+- `externalUrl` pour le lien externe de réunion.
+
+### Enregistrements
+Le modèle `MeetingRecording` permet d’attacher des liens d’enregistrement à une réunion.
+
+---
+
+## 6. Organisation actuelle du projet
 
 ```text
 app/
-  actions.ts
+  actions/
   components/
   general-projects/
+  meetings/
   new-tasks/[projectId]/
   project/[projectId]/
   sign-in/[[...sign-in]]/
   sign-up/[[...sign-up]]/
   task-details/[taskId]/
+  teams/
 lib/
+  email.ts
+  permissions.ts
   prisma.ts
+  project-role-labels.ts
+  project-roles.ts
+  task-status.ts
+  team-role-labels.ts
+  team-roles.ts
+  validations.ts
 prisma/
+  migrations/
   schema.prisma
 public/
 proxy.ts
+type.ts
 ```
 
-Le cœur de la logique métier est aujourd’hui centralisé dans `app/actions.ts`, ce qui est pratique pour une première version mais constitue aussi un axe de refactorisation évident à moyen terme.
+La logique métier n’est plus centralisée dans un unique `app/actions.ts` : elle est désormais découpée en dossier `app/actions/`.
 
-## Installation
+---
+
+## 7. Variables d’environnement
+
+### Variables obligatoires
+
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+
+DATABASE_URL=
+
+RESEND_API_KEY=
+EMAIL_FROM=
+APP_BASE_URL=
+```
+
+### Recommandations
+- ne jamais committer les secrets ;
+- utiliser des valeurs différentes entre local, staging et production ;
+- définir les variables `NEXT_PUBLIC_*` avant le build de l’application ;
+- garder `EMAIL_FROM` cohérent avec le domaine vérifié dans Resend ;
+- définir `APP_BASE_URL` sur l’URL publique réelle de l’application.
+
+---
+
+## 8. Lancement en local
 
 ### 1. Cloner le dépôt
 
@@ -159,102 +197,105 @@ cd Gestion-de-projet
 npm install
 ```
 
-### 3. Configurer les variables d’environnement
+### 3. Démarrer PostgreSQL local via Docker
 
-Créer un fichier `.env` à la racine du projet :
+```bash
+docker compose up -d
+```
+
+### 4. Configurer l’environnement
+
+Créer un fichier `.env.local` à la racine du projet et y renseigner les variables nécessaires.
+
+Exemple local :
 
 ```env
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+
 DATABASE_URL="postgresql://app_user@127.0.0.1:5434/app_gestion_projets?schema=public"
-```
 
-### 4. Démarrer PostgreSQL avec Docker
-
-```bash
-docker compose up -d
+RESEND_API_KEY=
+EMAIL_FROM="Sunu Projets <onboarding@resend.dev>"
+APP_BASE_URL="http://localhost:3000"
 ```
 
 ### 5. Appliquer les migrations Prisma
 
 ```bash
 npx prisma migrate dev
-```
-
-### 6. Générer le client Prisma
-
-```bash
 npx prisma generate
 ```
 
-### 7. Lancer l’application
+### 6. Lancer l’application
 
 ```bash
 npm run dev
 ```
 
-L’application sera disponible sur :
+L’application est alors disponible sur :
 
+```text
 http://localhost:3000
-
-## Base de données
-
-Le projet utilise désormais **PostgreSQL** en développement local.
-
-Le service PostgreSQL est défini dans `docker-compose.yml` et exposé localement sur le port `5434` afin d’éviter les conflits avec d’autres projets pouvant déjà utiliser PostgreSQL.
-
-Commandes utiles :
-
-```bash
-docker compose up -d
-docker compose down
-docker compose ps
 ```
 
-## Workflow conseillé à partir de maintenant
+---
 
-Pour lancer le projet proprement :
+## 9. Notes importantes sur les services externes
 
-```bash
-docker compose up -d
-npx prisma migrate dev
-npm run dev
-```
+### Clerk
+Le projet utilise Clerk pour protéger les routes privées et pour récupérer l’utilisateur authentifié côté serveur.
 
-Et pour arrêter la base :
+### Resend
+Les emails d’assignation de tâche passent par `lib/email.ts`.  
+Si `RESEND_API_KEY` est absente, l’envoi est simplement ignoré avec un warning, ce qui évite de casser le flux métier.
 
-```bash
-docker compose down
-```
+### Jitsi
+L’intégration actuelle est une V1 légère : la réunion stocke un `provider` et une `externalUrl`.  
+Le projet ne gère pas encore un hébergement Jitsi dédié ni une intégration iframe poussée.
 
-## Limites actuelles
+---
 
-Le projet est déjà fonctionnel, mais plusieurs améliorations sont encore nécessaires pour le rendre plus robuste :
+## 10. Déploiement — vue rapide
 
-- contrôle d’autorisation métier insuffisant sur certaines actions sensibles ;
-- validation des entrées encore limitée ;
-- logique serveur très centralisée dans un seul fichier ;
-- statuts de tâche encore gérés en chaînes de caractères ;
-- rôles de projet non encore présents ;
-- UI encore perfectible sur certains flux et sur le responsive.
+Pour la mise en ligne, il faut prévoir au minimum :
 
-## Feuille de route
+1. un hébergement Node.js / Next.js ;
+2. une base PostgreSQL de production ;
+3. une instance Clerk configurée pour le domaine de production ;
+4. un domaine d’envoi vérifié dans Resend ;
+5. les variables d’environnement de production ;
+6. l’application des migrations Prisma sur la base de production ;
+7. une vérification fonctionnelle complète.
 
-Les axes d’évolution prioritaires sont les suivants :
+Une checklist détaillée est fournie dans `CHECKLIST_MISE_EN_PRODUCTION.md`.
 
-- sécuriser les actions serveur ;
-- améliorer la gestion des tâches ;
-- renforcer la collaboration ;
-- améliorer l’UX ;
-- refactoriser progressivement la structure du code ;
-- ajouter une ou deux fonctionnalités différenciantes. 
+---
 
-## Auteur
+## 11. Limites connues / points d’attention
+
+Le projet est déjà exploitable, mais plusieurs points restent à consolider :
+
+- le schéma de tâche utilise encore un statut stocké en chaîne ;
+- certaines permissions restent à durcir sur certaines actions ;
+- l’UI est fonctionnelle mais encore perfectible sur certains flux ;
+- le module commentaires sur les tâches n’est pas encore intégré ;
+- la partie Jitsi reste volontairement légère en V1.
+
+---
+
+## 12. Documentation associée
+
+Le dépôt contient également :
+
+- `Workflow_Gestion_de_Projet.md`
+- `CHECKLIST_MISE_EN_PRODUCTION.md`
+- `Roadmap_Gestion_de_Projet.md`
+
+---
+
+## 13. Auteur
 
 Projet réalisé par **Moulaye Cheikh Oumar KOUNTA**.
-
-## Remarque
-
-Cette application est actuellement à un stade de **base fonctionnelle avancée**. Elle n’est plus seulement au niveau “mise en place du squelette”, mais elle reste dans une phase de consolidation avant d’évoluer vers une version plus robuste et plus différenciante.

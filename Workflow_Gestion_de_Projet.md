@@ -1,176 +1,96 @@
-# Workflow actuel — App Gestion de Projets
+# Workflow actuel — Sunu Projets
 
 ## Objectif du document
-Ce document décrit le **workflow réel actuel** de l’application, c’est-à-dire le parcours utilisateur et le flux technique tel qu’il ressort du dépôt aujourd’hui.
 
-Il ne s’agit pas du workflow cible futur, mais bien du fonctionnement actuellement implémenté.
+Ce document décrit le fonctionnement réel actuellement implémenté dans le dépôt : parcours utilisateur, logique métier et flux techniques principaux.
+
+Il ne décrit pas la cible future idéale, mais l’état présent du projet.
 
 ---
 
 ## 1. Vue d’ensemble
-L’application suit un flux simple :
-1. authentifier l’utilisateur ;
-2. le synchroniser dans la base locale ;
-3. afficher ses projets ;
-4. créer un projet ou rejoindre un projet ;
-5. gérer les tâches d’un projet ;
-6. consulter et mettre à jour le détail d’une tâche.
+
+Le workflow actuel peut se résumer ainsi :
+
+1. l’utilisateur s’authentifie via Clerk ;
+2. son identité est synchronisée dans la base applicative ;
+3. il accède à ses projets et collaborations ;
+4. il peut créer ou rejoindre un projet ;
+5. il peut gérer des tâches dans un projet ;
+6. il peut gérer des équipes / workspaces ;
+7. il peut créer et suivre des réunions d’équipe ;
+8. il peut exploiter un lien Jitsi externe et référencer des enregistrements.
 
 ---
 
 ## 2. Workflow utilisateur
 
 ### Étape 1 — Authentification
-L’utilisateur arrive sur l’application.
-
-- les pages publiques sont `/sign-in` et `/sign-up` ;
+- les routes `/sign-in` et `/sign-up` sont publiques ;
 - les autres routes sont protégées par le middleware Clerk défini dans `proxy.ts` ;
-- un utilisateur non authentifié est redirigé vers le flux d’authentification.
+- un utilisateur non authentifié est bloqué sur les routes privées.
 
-### Étape 2 — Création/synchronisation de l’utilisateur applicatif
-Une fois connecté, la navbar récupère les informations de l’utilisateur Clerk.
+### Étape 2 — Synchronisation de l’utilisateur applicatif
+Après connexion Clerk :
+- l’application récupère les informations de l’utilisateur ;
+- l’utilisateur est vérifié / créé dans la base locale ;
+- cette entrée locale sert ensuite aux relations Prisma.
 
-Si l’email et le nom sont disponibles, elle appelle `checkAndAddUser(email, name)`.
-
-But :
-- vérifier si l’utilisateur existe déjà dans la base SQLite ;
-- sinon, le créer.
-
-Résultat :
-l’utilisateur peut ensuite être relié à des projets et à des tâches via Prisma.
-
-### Étape 3 — Accès à “Mes projets”
-La page `/` sert actuellement de dashboard personnel.
-
-Au chargement :
-- l’email de l’utilisateur connecté est récupéré via Clerk ;
-- la page appelle `getProjectsCreatedByUSer(email)` ;
-- les projets créés par l’utilisateur sont affichés.
-
-Actions disponibles :
+### Étape 3 — Accès aux projets
+L’utilisateur peut :
+- consulter ses projets ;
+- consulter ses collaborations ;
 - créer un projet ;
-- consulter un projet ;
-- supprimer un projet.
+- rejoindre un projet via code d’invitation.
 
-### Étape 4 — Création d’un projet
-Depuis la page d’accueil, l’utilisateur ouvre une modale de création.
+### Étape 4 — Gestion des rôles projet
+Dans un projet, les membres sont gérés avec des rôles :
+- `OWNER`
+- `MANAGER`
+- `MEMBER`
 
-Champs saisis :
-- nom du projet ;
-- description.
+Les rôles conditionnent certaines actions sensibles.
 
-Traitement :
-- appel à `createProject(name, description, email)` ;
-- génération d’un code d’invitation unique ;
-- récupération de l’utilisateur créateur ;
-- insertion du projet en base avec `createdById`.
+### Étape 5 — Gestion des tâches
+Dans un projet, l’utilisateur peut :
+- créer une tâche ;
+- l’assigner à un collaborateur du projet ;
+- suivre son statut ;
+- consulter son détail ;
+- la clôturer avec une description de solution ;
+- voir l’activité associée au projet.
 
-Résultat :
-- le projet est créé ;
-- la liste est rechargée ;
-- un message de succès est affiché.
+### Étape 6 — Notification email d’assignation
+Lorsqu’une tâche est assignée à un autre utilisateur :
+- l’application envoie un email via Resend ;
+- le lien inclus pointe vers le projet via `APP_BASE_URL`.
 
-### Étape 5 — Accès à “Collaborations”
-Depuis la navbar, l’utilisateur peut accéder à `/general-projects`.
+### Étape 7 — Gestion des équipes
+L’utilisateur peut :
+- créer une équipe ;
+- rejoindre / gérer une équipe ;
+- voir les projets liés à une équipe ;
+- administrer les membres d’équipe selon son rôle.
 
-Cette page sert à gérer la participation à des projets créés par d’autres utilisateurs.
+### Étape 8 — Gestion des réunions
+L’utilisateur peut :
+- créer une réunion rattachée à une équipe ;
+- lier éventuellement la réunion à un projet ;
+- définir un statut de réunion ;
+- enregistrer des notes / compte-rendus ;
+- consulter la liste et le détail des réunions.
 
-Actions disponibles :
-- entrer un code d’invitation ;
-- rejoindre un projet ;
-- visualiser les projets associés à l’utilisateur.
+### Étape 9 — Jitsi V1
+Pour certaines réunions :
+- un lien externe de réunion est généré / stocké ;
+- le provider peut être `JITSI` ;
+- la réunion n’est pas encore une intégration vidéo embarquée complète.
 
-### Étape 6 — Rejoindre un projet via code
-L’utilisateur saisit un code d’invitation.
-
-Traitement côté serveur :
-- appel à `addUserToProject(email, inviteCode)` ;
-- recherche du projet par `inviteCode` ;
-- recherche de l’utilisateur par email ;
-- vérification qu’il n’existe pas déjà une entrée `ProjectUser` pour ce couple utilisateur/projet ;
-- création du lien dans `ProjectUser`.
-
-Résultat :
-- l’utilisateur est ajouté au projet ;
-- le projet apparaît dans ses collaborations.
-
-### Étape 7 — Consultation d’un projet
-Depuis “Mes projets” ou “Collaborations”, l’utilisateur peut ouvrir `/project/[projectId]`.
-
-Au chargement :
-- la page récupère l’identifiant du projet dans les paramètres ;
-- elle appelle `getProjectInfo(projectId, true)` ;
-- les détails du projet, les tâches, les membres et le créateur sont récupérés.
-
-La page affiche notamment :
-- les informations du projet ;
-- les membres ;
-- les tâches ;
-- les compteurs par statut ;
-- les filtres.
-
-### Étape 8 — Filtrage des tâches
-Dans la page projet, l’utilisateur peut filtrer les tâches :
-- toutes ;
-- à faire ;
-- en cours ;
-- terminées ;
-- tâches assignées à l’utilisateur connecté.
-
-Le filtrage est actuellement géré côté client à partir des tâches déjà chargées.
-
-### Étape 9 — Création d’une tâche
-Depuis la page projet, l’utilisateur peut aller sur `/new-tasks/[projectId]`.
-
-Le formulaire permet de définir :
-- nom ;
-- description ;
-- date limite éventuelle ;
-- utilisateur assigné.
-
-Traitement :
-- appel à `createTask(...)` ;
-- récupération de l’utilisateur créateur ;
-- recherche éventuelle de l’utilisateur assigné ;
-- création de la tâche reliée au projet et à l’utilisateur assigné.
-
-Résultat :
-- la tâche est ajoutée au projet.
-
-### Étape 10 — Suppression d’une tâche
-Depuis la page projet, une action permet de supprimer une tâche.
-
-Traitement :
-- appel à `deleteTaskById(taskId)` ;
-- suppression directe en base ;
-- rechargement des informations du projet.
-
-### Étape 11 — Consultation du détail d’une tâche
-L’utilisateur peut ouvrir `/task-details/[taskId]`.
-
-Traitement :
-- appel à `getTaskDetails(taskId)` ;
-- récupération de la tâche avec son projet, son utilisateur assigné et son créateur.
-
-La page affiche notamment :
-- le titre ;
-- la description ;
-- le statut ;
-- la date limite ;
-- l’utilisateur assigné ;
-- le créateur ;
-- la solution si elle existe.
-
-### Étape 12 — Mise à jour du statut d’une tâche
-Depuis la page détail tâche, l’utilisateur peut faire évoluer le statut.
-
-Traitement :
-- appel à `updateTaskStatus(taskId, newStatus, solutionDescription?)` ;
-- mise à jour simple du champ `status` ;
-- si le statut devient `Done` et qu’une solution est saisie, mise à jour simultanée de `solutionDescription`.
-
-Résultat :
-- la tâche reflète son nouvel état d’avancement.
+### Étape 10 — Enregistrements
+Sur une réunion :
+- des enregistrements sont ajoutés par URL ;
+- ils sont listés sur le détail de réunion ;
+- l’application ne stocke pas encore les fichiers vidéo elle-même.
 
 ---
 
@@ -179,108 +99,163 @@ Résultat :
 ```text
 [Utilisateur]
     ↓
-[Clerk Auth]
+[Clerk]
     ↓
-[Middleware proxy.ts protège les routes privées]
+[proxy.ts protège les routes privées]
     ↓
-[Navbar]
+[getCurrentDbUser / sync utilisateur]
     ↓
-checkAndAddUser(email, name)
+[Prisma + PostgreSQL]
     ↓
-[Base Prisma / SQLite]
+Projets
+    ├── création
+    ├── jointure par code
+    ├── gestion membres / rôles
+    └── historique d’activité
     ↓
-Page /
-    ├── getProjectsCreatedByUSer(email)
-    ├── createProject(...)
-    └── deleteProjectById(projectId)
+Tâches
+    ├── création
+    ├── assignation
+    ├── email Resend
+    ├── détail
+    └── mise à jour de statut
     ↓
-Page /general-projects
-    ├── addUserToProject(email, inviteCode)
-    └── getProjectsAssociatedWithUser(email)
+Équipes
+    ├── création
+    ├── membres
+    └── projets liés
     ↓
-Page /project/[projectId]
-    ├── getProjectInfo(projectId, true)
-    ├── deleteTaskById(taskId)
-    └── navigation vers création tâche
-    ↓
-Page /new-tasks/[projectId]
-    └── createTask(...)
-    ↓
-Page /task-details/[taskId]
-    ├── getTaskDetails(taskId)
-    └── updateTaskStatus(taskId, newStatus, solutionDescription)
+Réunions
+    ├── création
+    ├── notes / statut
+    ├── lien externe Jitsi
+    └── enregistrements par URL
 ```
 
 ---
 
-## 4. Rôle des principaux fichiers
+## 4. Principaux éléments techniques
 
-### `proxy.ts`
-- protège les routes privées ;
-- laisse publiques les routes d’authentification ;
-- applique `auth.protect()` sur le reste.
+### Authentification / protection
+- `proxy.ts` applique `clerkMiddleware(...)` ;
+- seules les routes `/sign-in(.*)` et `/sign-up(.*)` sont explicitement publiques.
 
-### `app/actions.ts`
-- centralise la logique serveur ;
-- contient les opérations métier principales liées aux utilisateurs, projets et tâches.
+### Permissions
+Les helpers de permissions servent de base aux contrôles d’accès :
+- `getCurrentDbUser()`
+- `assertTeamMember(teamId)`
+- `assertProjectMember(projectId)`
+- `assertProjectOwner(projectId)`
+- `assertTaskAccess(taskId)`
 
-### `app/page.tsx`
-- dashboard personnel actuel ;
-- permet de créer et supprimer ses projets ;
-- charge les projets créés par l’utilisateur.
+### Gestion des rôles
+Le projet dispose de helpers dédiés pour les rôles projet :
+- `getProjectMembership(projectId)`
+- `assertHasProjectRole(projectId, allowedRoles)`
+- `canManageProject(projectId)`
+- `canAdminProject(projectId)`
 
-### `app/general-projects/page.tsx`
-- gère l’ajout à un projet par code ;
-- affiche les projets collaboratifs de l’utilisateur.
+### Actions métier
+Les server actions sont désormais structurées dans `app/actions/`, avec des domaines dédiés :
+- `activity`
+- `members`
+- `meetings`
+- `projects`
+- `tasks`
+- `teams`
+- `users`
 
-### `app/project/[projectId]/page.tsx`
-- affiche le projet et ses tâches ;
-- gère les filtres ;
-- permet la suppression de tâche ;
-- sert de point d’entrée vers la création de tâche.
-
-### `app/new-tasks/[projectId]/page.tsx`
-- formulaire de création de tâche.
-
-### `app/task-details/[taskId]/page.tsx`
-- affiche le détail complet d’une tâche ;
-- permet la mise à jour du statut.
-
-### `app/components/*`
-- composants d’interface réutilisables :
-  - navbar ;
-  - cartes projet ;
-  - cartes tâche ;
-  - wrapper global ;
-  - état vide ;
-  - informations utilisateur.
-
-### `lib/prisma.ts`
-- singleton Prisma pour éviter les instances multiples en développement.
-
-### `prisma/schema.prisma`
-- décrit les entités `User`, `Project`, `Task`, `ProjectUser`.
+### Emails
+`lib/email.ts` :
+- construit un client Resend à partir de `RESEND_API_KEY` ;
+- utilise `EMAIL_FROM` ;
+- génère des liens vers l’application à partir de `APP_BASE_URL`.
 
 ---
 
-## 5. Limites actuelles du workflow
-Le workflow actuel est cohérent pour une V1, mais plusieurs limites existent :
-- les autorisations métier ne sont pas encore assez strictes ;
-- les statuts sont encore des chaînes libres ;
-- certaines erreurs remontées côté serveur sont trop génériques ;
-- certaines modales reposent encore sur de la manipulation DOM directe ;
-- beaucoup de logique serveur est concentrée dans un seul fichier ;
-- il n’existe pas encore de rôles projet (`owner`, `manager`, `member`).
+## 5. Modèle de données observé
+
+### Entités principales
+- `User`
+- `Team`
+- `TeamMember`
+- `Project`
+- `Task`
+- `ProjectUser`
+- `ActivityLog`
+- `TeamMeeting`
+- `MeetingRecording`
+
+### Enums métier
+- `ProjectRole`
+- `TeamRole`
+- `ProjectCollaboratorScope`
+- `MeetingStatus`
+- `MeetingProvider`
+- `ActivityType`
 
 ---
 
-## 6. Résumé du fonctionnement actuel
-L’application suit aujourd’hui un flux clair :
-- un utilisateur s’authentifie ;
-- il est créé/synchronisé localement ;
-- il gère ses propres projets ;
-- il peut rejoindre des projets via invitation ;
-- il crée et suit des tâches ;
-- il met à jour leur état d’avancement.
+## 6. Flux détaillé par module
 
-C’est donc déjà un workflow complet de base pour une application de gestion de projets et tâches, même si plusieurs améliorations restent à faire pour le rendre plus robuste et plus riche.
+### Module Projets
+- un utilisateur crée un projet ;
+- un code d’invitation est généré ;
+- le créateur devient `OWNER` ;
+- des collaborateurs peuvent rejoindre le projet ;
+- le projet peut être lié à une équipe.
+
+### Module Tâches
+- la tâche est liée à un projet ;
+- elle peut être assignée à un membre du projet ;
+- si l’assignation vise un autre utilisateur, un email est envoyé ;
+- la clôture d’une tâche impose une description de solution.
+
+### Module Équipes
+- une équipe possède ses propres membres et rôles ;
+- un projet appartient éventuellement à une équipe ;
+- la gestion équipe et la gestion projet restent distinctes.
+
+### Module Réunions
+- une réunion appartient à une équipe ;
+- elle peut référencer un projet ;
+- elle gère statut, date, durée, notes et lien externe ;
+- elle peut contenir plusieurs enregistrements liés.
+
+---
+
+## 7. Ce que ce workflow implique pour la mise en production
+
+Pour un usage réel :
+- Clerk doit être configuré pour le domaine final ;
+- PostgreSQL doit être externalisé hors du Docker local ;
+- Resend doit être configuré avec un domaine d’envoi réel ;
+- `APP_BASE_URL` doit pointer vers l’URL publique finale ;
+- il faut tester les flux projet, tâche, équipe, réunion et email.
+
+---
+
+## 8. Limites connues du workflow actuel
+
+- le module commentaires de tâches n’est pas encore présent ;
+- l’intégration Jitsi est légère et dépend d’un lien externe ;
+- certaines actions méritent encore un durcissement supplémentaire côté permissions ;
+- certaines parties UI restent à polir.
+
+---
+
+## 9. Résumé
+
+Le projet n’est plus une simple V1 “projets + tâches”.  
+Le workflow réel actuel couvre déjà :
+
+- auth ;
+- projets ;
+- rôles et membres ;
+- tâches ;
+- emails ;
+- équipes ;
+- réunions ;
+- enregistrements.
+
+C’est donc déjà une base métier sérieuse pour une mise en ligne interne, sous réserve d’une configuration de production propre.
