@@ -33,6 +33,7 @@ enum MeetingStatus {
 enum MeetingProvider {
   NONE
   JITSI
+  NATIVE
 }
 
 enum ActivityType {
@@ -171,6 +172,10 @@ model TeamMeeting {
   status          MeetingStatus   @default(SCHEDULED)
   provider        MeetingProvider @default(NONE)
   externalUrl     String?
+
+  nativeRoomId        String?  @unique @db.VarChar(100)
+  nativeRoomEnabledAt DateTime?
+  nativeRoomCreatedById String? @db.VarChar(36)
 
   teamId      String @db.VarChar(36)
   projectId   String? @db.VarChar(36)
