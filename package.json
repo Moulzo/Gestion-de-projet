@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "node --experimental-strip-types server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "set NODE_ENV=production&& node --experimental-strip-types server.ts",
     "lint": "eslint"
   },
   "dependencies": {
@@ -34,6 +34,7 @@
     "eslint-config-next": "16.1.7",
     "prisma": "^6.19.2",
     "tailwindcss": "^4.2.1",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

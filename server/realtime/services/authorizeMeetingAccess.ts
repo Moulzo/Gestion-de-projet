@@ -1,5 +1,5 @@
-import prisma from "@/lib/prisma";
-import { ActionError } from "@/lib/permissions";
+import prisma from "../../../lib/prisma.ts";
+import { ActionError } from "../../../lib/errors.ts";
 
 export async function authorizeMeetingAccess(params: {
     meetingId: string;

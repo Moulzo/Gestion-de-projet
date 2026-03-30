@@ -1,4 +1,4 @@
-import { RealtimeParticipant } from "@/lib/realtime/types";
+import type { RealtimeParticipant } from "../../../lib/realtime/types.ts";
 
 type RoomParticipantsMap = Map<string, RealtimeParticipant[]>;
 

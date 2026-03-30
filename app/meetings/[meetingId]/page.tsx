@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Wrapper from "@/app/components/Wrapper";
+import NativeMeetingRoom from "@/components/meeting/NativeMeetingRoom";
 import {
     addMeetingRecording,
     disableNativeMeetingRoom,
@@ -452,33 +453,10 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                         )}
 
                         {meeting.provider === "NATIVE" ? (
-                            <div className="space-y-3">
-                                <div className="rounded-lg border border-base-300 p-3">
-                                    <p className="text-sm opacity-70 mb-1">Salle native</p>
-                                    <p className="text-sm break-all">
-                                        Room ID : {meeting.nativeRoomId || "Non défini"}
-                                    </p>
-                                </div>
-
-                                <div className="alert alert-info">
-                                    <Info className="w-4 h-4" />
-                                    <span>
-                                        La salle native est activée. L'interface WebRTC sera branchée à l'étape suivante.
-                                    </span>
-                                </div>
-
-                                {canManageMeeting && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline w-full sm:w-auto"
-                                        onClick={handleDisableNative}
-                                        disabled={disablingNative}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        Désactiver la salle native
-                                    </button>
-                                )}
-                            </div>
+                            <NativeMeetingRoom
+                                meetingId={meeting.id}
+                                roomId={meeting.nativeRoomId}
+                            />
                         ) : meeting.provider === "JITSI" && hasVideoLink ? (
                             <>
                                 <div className="rounded-lg border border-base-300 p-3">

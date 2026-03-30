@@ -1,11 +1,11 @@
 import { Server, Socket } from "socket.io";
-import { registerJoinMeetingHandler } from "./joinMeeting";
-import { registerLeaveMeetingHandler } from "./leaveMeeting";
+import { registerJoinMeetingHandler } from "./joinMeeting.ts";
+import { registerLeaveMeetingHandler } from "./leaveMeeting.ts";
 import {
     removeSocketFromAllMeetings,
     getParticipantsInMeeting,
-} from "../services/meetingPresenceService";
-import { REALTIME_EVENTS } from "@/lib/realtime/events";
+} from "../services/meetingPresenceService.ts";
+import { REALTIME_EVENTS } from "../../../lib/realtime/events.ts";
 
 type AuthenticatedSocket = Socket & {
     data: {

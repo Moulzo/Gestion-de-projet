@@ -1,10 +1,10 @@
 import { Server, Socket } from "socket.io";
-import { REALTIME_EVENTS } from "@/lib/realtime/events";
-import {
+import { REALTIME_EVENTS } from "../../../lib/realtime/events.ts";
+import type {
     MeetingErrorPayload,
     MeetingLeavePayload,
-} from "@/lib/realtime/types";
-import { removeParticipantFromMeeting } from "../services/meetingPresenceService";
+} from "../../../lib/realtime/types.ts";
+import { removeParticipantFromMeeting } from "../services/meetingPresenceService.ts";
 
 type AuthenticatedSocket = Socket & {
     data: {

@@ -1,15 +1,14 @@
 import { Server, Socket } from "socket.io";
-import { REALTIME_EVENTS } from "@/lib/realtime/events";
-import {
+import { REALTIME_EVENTS } from "../../../lib/realtime/events.ts";
+import type {
     MeetingJoinPayload,
     MeetingErrorPayload,
     RealtimeParticipant,
-} from "@/lib/realtime/types";
-import { authorizeMeetingAccess } from "../services/authorizeMeetingAccess";
+} from "../../../lib/realtime/types.ts";
+import { authorizeMeetingAccess } from "../services/authorizeMeetingAccess.ts";
 import {
     addParticipantToMeeting,
-    getParticipantsInMeeting,
-} from "../services/meetingPresenceService";
+} from "../services/meetingPresenceService.ts";
 
 type AuthenticatedSocket = Socket & {
     data: {
@@ -46,6 +45,8 @@ export function registerJoinMeetingHandler(io: Server, socket: AuthenticatedSock
                     meetingId: payload.meetingId,
                     email,
                 });
+
+                socket.data.userId = user.id;
 
                 const roomName = `meeting:${payload.meetingId}`;
                 socket.join(roomName);
