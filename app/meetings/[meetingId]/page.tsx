@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import Wrapper from "@/app/components/Wrapper";
+import NativeMeetingRoom from "@/components/meeting/NativeMeetingRoom";
 import {
     addMeetingRecording,
+    disableNativeMeetingRoom,
+    enableNativeMeetingRoom,
     generateJitsiMeetingLink,
     getMeetingDetails,
     regenerateJitsiMeetingLink,
@@ -47,6 +50,7 @@ const STATUS_BADGE_CLASS = {
 const PROVIDER_LABELS = {
     NONE: "Aucune visio",
     JITSI: "Jitsi",
+    NATIVE: "Visio native",
 } as const;
 
 const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
@@ -65,6 +69,8 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
     const [recordingDescription, setRecordingDescription] = useState("");
     const [addingRecording, setAddingRecording] = useState(false);
     const [removingRecordingId, setRemovingRecordingId] = useState<string | null>(null);
+    const [enablingNative, setEnablingNative] = useState(false);
+    const [disablingNative, setDisablingNative] = useState(false);
 
     const fetchMeeting = async (id: string) => {
         try {
@@ -263,6 +269,44 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
         }
     };
 
+    const handleEnableNative = async () => {
+        if (!meetingId || !canManageMeeting) return;
+
+        try {
+            setEnablingNative(true);
+            await enableNativeMeetingRoom(meetingId);
+            await fetchMeeting(meetingId);
+            toast.success("Salle native activée.");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erreur lors de l'activation de la salle native."
+            );
+        } finally {
+            setEnablingNative(false);
+        }
+    };
+
+    const handleDisableNative = async () => {
+        if (!meetingId || !canManageMeeting) return;
+
+        try {
+            setDisablingNative(true);
+            await disableNativeMeetingRoom(meetingId);
+            await fetchMeeting(meetingId);
+            toast.success("Salle native désactivée.");
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Erreur lors de la désactivation de la salle native."
+            );
+        } finally {
+            setDisablingNative(false);
+        }
+    };
+
     if (loading) {
         return (
             <Wrapper>
@@ -408,7 +452,12 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                             </div>
                         )}
 
-                        {hasVideoLink ? (
+                        {meeting.provider === "NATIVE" ? (
+                            <NativeMeetingRoom
+                                meetingId={meeting.id}
+                                roomId={meeting.nativeRoomId}
+                            />
+                        ) : meeting.provider === "JITSI" && hasVideoLink ? (
                             <>
                                 <div className="rounded-lg border border-base-300 p-3">
                                     <p className="text-sm opacity-70 mb-2">Lien de réunion</p>
@@ -475,15 +524,27 @@ const page = ({ params }: { params: Promise<{ meetingId: string }> }) => {
                                 </p>
 
                                 {canManageMeeting ? (
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary w-full sm:w-auto"
-                                        onClick={handleGenerateJitsi}
-                                        disabled={generatingJitsi || isCancelled}
-                                    >
-                                        <Video className="w-4 h-4" />
-                                        Créer un lien Jitsi
-                                    </button>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary w-full sm:w-auto"
+                                            onClick={handleGenerateJitsi}
+                                            disabled={generatingJitsi || isCancelled}
+                                        >
+                                            <Video className="w-4 h-4" />
+                                            Créer un lien Jitsi
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline w-full sm:w-auto"
+                                            onClick={handleEnableNative}
+                                            disabled={enablingNative || isCancelled}
+                                        >
+                                            <Video className="w-4 h-4" />
+                                            Activer la salle native
+                                        </button>
+                                    </div>
                                 ) : (
                                     <p className="text-xs opacity-60">
                                         Seuls les propriétaires et managers peuvent configurer la visio.

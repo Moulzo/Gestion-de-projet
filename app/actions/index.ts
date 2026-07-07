@@ -45,6 +45,8 @@ export {
     generateJitsiMeetingLink,
     regenerateJitsiMeetingLink,
     removeMeetingVideoLink,
+    enableNativeMeetingRoom,
+    disableNativeMeetingRoom,
 } from "./meetings";
 
 // Tasks

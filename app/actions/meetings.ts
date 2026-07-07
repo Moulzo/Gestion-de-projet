@@ -516,6 +516,75 @@ export async function removeMeetingVideoLink(meetingId: string) {
     };
 }
 
+function buildNativeRoomId(meetingTitle: string, meetingId: string) {
+    const base = slugify(meetingTitle) || "meeting";
+    const shortId = meetingId.replace(/-/g, "").slice(0, 8);
+    return `native-${base}-${shortId}`;
+}
+
+export async function enableNativeMeetingRoom(meetingId: string) {
+    const meeting = await getMeetingForVideoManagement(meetingId);
+
+    if (meeting.status === "CANCELLED") {
+        throw new ActionError(
+            "Impossible d'activer une salle native pour une réunion annulée.",
+            400
+        );
+    }
+
+    const nativeRoomId = buildNativeRoomId(meeting.title, meeting.id);
+
+    const updatedMeeting = await prisma.teamMeeting.update({
+        where: { id: meeting.id },
+        data: {
+            provider: "NATIVE",
+            externalUrl: null,
+            nativeRoomId,
+            nativeRoomEnabledAt: new Date(),
+        },
+        include: {
+            team: true,
+            project: true,
+            createdBy: true,
+        },
+    });
+
+    revalidateMeetingPaths(meeting.id, meeting.teamId);
+
+    return {
+        success: true,
+        message: "Salle native activée avec succès.",
+        meeting: updatedMeeting,
+        nativeRoomId,
+    };
+}
+
+export async function disableNativeMeetingRoom(meetingId: string) {
+    const meeting = await getMeetingForVideoManagement(meetingId);
+
+    const updatedMeeting = await prisma.teamMeeting.update({
+        where: { id: meeting.id },
+        data: {
+            provider: "NONE",
+            nativeRoomId: null,
+            nativeRoomEnabledAt: null,
+        },
+        include: {
+            team: true,
+            project: true,
+            createdBy: true,
+        },
+    });
+
+    revalidateMeetingPaths(meeting.id, meeting.teamId);
+
+    return {
+        success: true,
+        message: "Salle native désactivée avec succès.",
+        meeting: updatedMeeting,
+    };
+}
+
 export async function getMeetingRecordings(meetingId: string) {
     const user = await getCurrentDbUser();
 

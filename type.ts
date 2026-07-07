@@ -92,6 +92,8 @@ export type TeamMeeting = PrismaTeamMeeting & {
     createdBy?: User;
     meetingRecordings?: MeetingRecording[];
     currentUserTeamRole?: TeamRole | null;
+    nativeRoomId?: string | null;
+    nativeRoomEnabledAt?: Date | string | null;
 };
 
 export type TeamMeetingStatus = MeetingStatus;

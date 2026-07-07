@@ -33,6 +33,7 @@ enum MeetingStatus {
 enum MeetingProvider {
   NONE
   JITSI
+  NATIVE
 }
 
 enum ActivityType {
